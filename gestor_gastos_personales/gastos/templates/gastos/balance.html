@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Resumen de Finanzas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .positivo {
+            color: green;
+            font-weight: bold;
+        }
+        .negativo {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Resumen Financiero</h1>
+
+    <p><strong>Ingresos:</strong> ${{ ingresos }}</p>
+    <p><strong>Gastos:</strong> ${{ gastos }}</p>
+
+    {% if balance >= 0 %}
+        <p><strong>Balance:</strong> <span class="positivo">${{ balance }}</span></p>
+    {% else %}
+        <p><strong>Balance:</strong> <span class="negativo">${{ balance }}</span></p>
+    {% endif %}
+
+</body>
+</html>

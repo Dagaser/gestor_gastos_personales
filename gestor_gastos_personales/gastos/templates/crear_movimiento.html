@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Nuevo Movimiento</title>
+</head>
+<body>
+    <h1>Registrar Ingreso o Gasto</h1>
+
+    <form method="POST">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Guardar</button>
+    </form>
+
+    <p><a href="{% url 'balance' %}">Volver al Balance</a></p>
+</body>
+</html>

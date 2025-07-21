@@ -1,0 +1,40 @@
+{% load humanize %} 
+{% block content %}
+  <h1>Mis movimientos</h1>
+
+  {% if movimientos %}
+    <table border="1" cellspacing="0" cellpadding="8">
+      <thead>
+        <tr>
+          <th>Tipo</th>
+          <th>Monto</th>
+          <th>Descripción</th>
+          <th>Categoría</th>
+          <th>Fecha</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for movimiento in movimientos %}
+          <tr>
+            <td>{{ movimiento.get_tipo_display }}</td>
+            <td>
+              {% if movimiento.tipo == 'ingreso' %}
+                <span style="color: green;">{{ movimiento.monto|floatformat:2|intcomma }}</span>
+              {% else %}
+                <span style="color: red;">{{ movimiento.monto|floatformat:2|intcomma }}</span>
+              {% endif %}
+            </td>
+            <td>{{ movimiento.descripcion }}</td>
+            <td>{{ movimiento.categoria }}</td>
+            <td>{{ movimiento.fecha }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No has registrado ningún movimiento aún.</p>
+  {% endif %}
+
+  <p><a href="{% url 'crear_movimiento' %}">Agregar nuevo movimiento</a></p>
+  <p><a href="{% url 'balance' %}">Ver balance</a></p>
+{% endblock %}

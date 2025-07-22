@@ -8,7 +8,8 @@ class Movimiento(models.Model):
     descripcion = models.TextField(blank=True)
     fecha = models.DateField()
     creado_en = models.DateTimeField(auto_now_add=True)
-
+    comprobante = models.FileField(upload_to='comprobantes/', blank=True, null=True)
+    
     def __str__(self):
         return f"{self.tipo.title()} de {self.monto} el {self.fecha}"
 

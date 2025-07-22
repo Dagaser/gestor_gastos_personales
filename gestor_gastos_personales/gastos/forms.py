@@ -4,7 +4,7 @@ from .models import Movimiento
 class MovimientoForm(forms.ModelForm):
     class Meta:
         model = Movimiento
-        fields = ['tipo', 'monto', 'descripcion', 'fecha']
+        fields = ['tipo', 'monto', 'descripcion', 'fecha', 'comprobante']
         widgets = {
             'monto': forms.NumberInput(attrs={
                 'class': 'form-control',

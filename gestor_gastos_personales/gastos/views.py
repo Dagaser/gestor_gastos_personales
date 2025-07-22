@@ -28,7 +28,7 @@ def balance_view(request):
 @login_required
 def crear_movimiento_view(request):
     if request.method == 'POST':
-        form = MovimientoForm(request.POST)
+        form = MovimientoForm(request.POST, request.FILES)
 
         if form.is_valid():
             movimiento = form.save(commit=False)

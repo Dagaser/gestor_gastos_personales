@@ -10,6 +10,7 @@
         <th>Descripción</th>
         <th>Categoría</th>
         <th>Fecha</th>
+        <th>Nota</th>
         <th>Comprobante</th>
       </tr>
     </thead>
@@ -27,6 +28,7 @@
           <td>{{ movimiento.descripcion }}</td>
           <td>{{ movimiento.categoria }}</td>
           <td>{{ movimiento.fecha }}</td>
+          <td>{{ movimiento.nota|default:"—" }}</td>
           <td>
             {% if movimiento.comprobante %}
               {% with url=movimiento.comprobante.url|lower %}

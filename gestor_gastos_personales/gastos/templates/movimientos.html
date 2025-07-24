@@ -2,6 +2,53 @@
 {% block content %}
   <h1>Mis movimientos</h1>
 
+  <form method="get" style="margin-bottom: 20px;">
+    <label for="tipo">Tipo:</label>
+    <select name="tipo" id="tipo">
+      <option value="">Todos</option>
+      <option value="ingreso" {% if request.GET.tipo == "ingreso" %}selected{% endif %}>Ingreso</option>
+      <option value="gasto" {% if request.GET.tipo == "gasto" %}selected{% endif %}>Gasto</option>
+    </select>
+  
+    <label for="categoria">Categoría:</label>
+    <select name="categoria">
+      <option value="">Todas las categorías</option>
+      {% for cat in categorias %}
+        <option value="{{ cat }}" {% if request.GET.categoria == cat %}selected{% endif %}>
+          {{ cat }}
+        </option>
+      {% endfor %}
+    </select>
+    
+    <label for="fecha_inicio">Desde:</label>
+    <input
+      type="date"
+      name="fecha_inicio"
+      id="fecha_inicio"
+      value="{{ request.GET.fecha_inicio }}"
+    >
+
+    <label for="fecha_fin">Hasta:</label>
+    <input
+      type="date"
+      name="fecha_fin"
+      id="fecha_fin"
+      value="{{ request.GET.fecha_fin }}"
+    >
+    
+    <label for="q">Buscar texto:</label>
+    <input
+      type="text"
+      name="q"
+      id="q"
+      value="{{ request.GET.q }}"
+      placeholder="Descripción o nota"
+    >
+
+    <button type="submit">Filtrar</button>
+    <a href="{% url 'movimientos' %}" style="margin-left: 10px;">Limpiar filtros</a>
+  </form>
+  
   <table border="1" cellspacing="0" cellpadding="8">
     <thead>
       <tr>
@@ -26,7 +73,7 @@
             {% endif %}
           </td>
           <td>{{ movimiento.descripcion }}</td>
-          <td>{{ movimiento.categoria }}</td>
+          <td>{{ movimiento.get_categoria_display }}</td>
           <td>{{ movimiento.fecha }}</td>
           <td>{{ movimiento.nota|default:"—" }}</td>
           <td>

@@ -44,7 +44,33 @@ def crear_movimiento_view(request):
 @login_required
 def movimientos_view(request):
     movimientos = Movimiento.objects.filter(usuario=request.user).order_by('-fecha')
-    return render(request, 'movimientos.html', {'movimientos': movimientos})
+    
+    tipo = request.GET.get('tipo')
+    categoria = request.GET.get('categoria')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    q = request.GET.get('q')
+
+    if tipo:
+        movimientos = movimientos.filter(tipo=tipo)
+
+    if categoria:
+        movimientos = movimientos.filter(categoria__iexact=categoria.strip())
+
+    if fecha_inicio:
+        movimientos = movimientos.filter(fecha__gte=fecha_inicio)
+
+    if fecha_fin:
+        movimientos = movimientos.filter(fecha__lte=fecha_fin)
+
+    if q:
+        movimientos = movimientos.filter(models.Q(descripcion__icontains=q) | models.Q(nota__icontains=q))
+    
+    categorias = Movimiento.objects.filter(usuario=request.user)\
+                                .values_list('categoria', flat=True)\
+                                .distinct()
+    
+    return render(request, 'movimientos.html', {'movimientos': movimientos, 'categorias': categorias,})
 
 @login_required
 def resumen_view(request):

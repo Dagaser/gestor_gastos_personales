@@ -49,28 +49,38 @@ def movimientos_view(request):
     categoria = request.GET.get('categoria')
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
-    q = request.GET.get('q')
+    nota = request.GET.get('nota')
 
     if tipo:
         movimientos = movimientos.filter(tipo=tipo)
 
     if categoria:
-        movimientos = movimientos.filter(categoria__iexact=categoria.strip())
+        movimientos = movimientos.filter(categoria__iexact=categoria)
 
     if fecha_inicio:
         movimientos = movimientos.filter(fecha__gte=fecha_inicio)
-
+    
     if fecha_fin:
         movimientos = movimientos.filter(fecha__lte=fecha_fin)
-
-    if q:
-        movimientos = movimientos.filter(models.Q(descripcion__icontains=q) | models.Q(nota__icontains=q))
+    
+    if nota:
+        movimientos = movimientos.filter(nota__icontains=nota)
     
     categorias = Movimiento.objects.filter(usuario=request.user)\
                                 .values_list('categoria', flat=True)\
                                 .distinct()
     
-    return render(request, 'movimientos.html', {'movimientos': movimientos, 'categorias': categorias,})
+    return render(request, 'movimientos.html', {
+        'movimientos': movimientos,
+        'categorias': categorias,
+        'filtros': {
+            'tipo': tipo,
+            'categoria': categoria,
+            'fecha_inicio': fecha_inicio,
+            'fecha_fin': fecha_fin,
+            'nota': nota,
+        }
+    })
 
 @login_required
 def resumen_view(request):

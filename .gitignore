@@ -1,0 +1,55 @@
+# Entornos virtuales
+venv/
+env/
+ENV/
+.venv/
+.mypy_cache/
+
+# Archivos de configuración del sistema/editor
+*.swp
+*.swo
+*.swn
+*.sublime-project
+*.sublime-workspace
+*.vscode/
+.idea/
+.DS_Store
+*.log
+
+# Archivos Python compilados
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Archivos de bases de datos locales
+*.sqlite3
+
+# Archivos de media subidos por el usuario
+media/
+uploads/
+
+# Archivos temporales
+*.bak
+*.tmp
+
+# Archivos de entorno y variables
+.env
+*.env
+
+# Archivos generados por pytest o cobertura
+htmlcov/
+.coverage
+.tox/
+.pytest_cache/
+
+# Archivos de exportación o pruebas
+*.csv
+*.xls
+*.xlsx
+*.pdf
+
+# Node/npm (si usas algo de frontend)
+node_modules/
+
+# Archivos de backup
+*~

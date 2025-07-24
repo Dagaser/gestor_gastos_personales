@@ -1,0 +1,90 @@
+{% load humanize %} 
+{% block content %}
+  <h1>Mis movimientos</h1>
+  
+  <h3>Filtrar movimientos</h3>
+  <form method="get">
+    <label>Tipo:</label>
+    <select name="tipo">
+      <option value="">-- Todos --</option>
+      <option value="ingreso" {% if filtros.tipo == 'ingreso' %}selected{% endif %}>Ingreso</option>
+      <option value="gasto" {% if filtros.tipo == 'gasto' %}selected{% endif %}>Gasto</option>
+    </select>
+
+    <label>Categoría:</label>
+    <select name="categoria">
+      <option value="">-- Todas --</option>
+      {% for cat in categorias %}
+        <option value="{{ cat }}" {% if filtros.categoria == cat %}selected{% endif %}>{{ cat }}</option>
+      {% endfor %}
+    </select>
+
+    <label>Desde:</label>
+    <input type="date" name="fecha_inicio" value="{{ filtros.fecha_inicio }}">
+    <label>Hasta:</label>
+    <input type="date" name="fecha_fin" value="{{ filtros.fecha_fin }}">
+
+
+    <label>Nota:</label>
+    <input name="nota" value="{{ filtros.nota|default_if_none:'' }}">
+
+    <button type="submit">Aplicar filtros</button>
+    <a href="{% url 'movimientos' %}"><button type="button">Limpiar filtros</button></a>
+  </form>
+
+  <table border="1" cellspacing="0" cellpadding="8">
+    <thead>
+      <tr>
+        <th>Tipo</th>
+        <th>Monto</th>
+        <th>Descripción</th>
+        <th>Categoría</th>
+        <th>Fecha</th>
+        <th>Nota</th>
+        <th>Comprobante</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for movimiento in movimientos %}
+        <tr>
+          <td>{{ movimiento.get_tipo_display }}</td>
+          <td>
+            {% if movimiento.tipo == 'ingreso' %}
+              <span style="color: green;">{{ movimiento.monto|floatformat:2|intcomma }}</span>
+            {% else %}
+              <span style="color: red;">{{ movimiento.monto|floatformat:2|intcomma }}</span>
+            {% endif %}
+          </td>
+          <td>{{ movimiento.descripcion }}</td>
+          <td>{{ movimiento.get_categoria_display }}</td>
+          <td>{{ movimiento.fecha }}</td>
+          <td>{{ movimiento.nota|default:"—" }}</td>
+          <td>
+            {% if movimiento.comprobante %}
+              {% with url=movimiento.comprobante.url|lower %}
+                {% if url|slice:"-4:" == ".jpg" or url|slice:"-5:" == ".jpeg" or url|slice:"-4:" == ".png" or url|slice:"-4:" == ".gif" %}
+                  <a href="{{ movimiento.comprobante.url }}" target="_blank">
+                    <img src="{{ movimiento.comprobante.url }}" alt="comprobante" width="80" height="auto" style="border-radius: 4px;" />
+                  </a>
+                {% endif %}
+              {% endwith %}
+              {% with url=movimiento.comprobante.url|lower %}
+                {% if not url|slice:"-4:" == ".jpg" and not url|slice:"-5:" == ".jpeg" and not url|slice:"-4:" == ".png" and not url|slice:"-4:" == ".gif" %}
+                  <a href="{{ movimiento.comprobante.url }}" target="_blank">Ver</a>
+                {% endif %}
+              {% endwith %}
+            {% endif %}
+          </td>
+                    
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="6">No has registrado ningún movimiento aún.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p><a href="{% url 'crear_movimiento' %}">Agregar nuevo movimiento</a></p>
+  <p><a href="{% url 'balance' %}">Ver balance</a></p>
+{% endblock %}

@@ -1,0 +1,34 @@
+# 🐍 Entorno virtual
+venv/
+.env
+
+# 🗂️ Archivos del sistema
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.log
+
+# 💻 Archivos de configuración del editor
+.vscode/
+.idea/
+
+# 🧪 Archivos de test y cobertura
+coverage/
+*.cover
+*.py,cover
+
+# 📦 Dependencias de paquetes
+*.egg
+*.egg-info/
+dist/
+build/
+
+# 🔐 Archivos sensibles
+.env
+*.key
+*.pem
+secrets.json
+
+# 🧹 Otros
+.DS_Store
+Thumbs.db

@@ -1,6 +1,36 @@
 {% load humanize %} 
 {% block content %}
   <h1>Mis movimientos</h1>
+  
+  <h3>Filtrar movimientos</h3>
+  <form method="get">
+    <label>Tipo:</label>
+    <select name="tipo">
+      <option value="">-- Todos --</option>
+      <option value="ingreso" {% if filtros.tipo == 'ingreso' %}selected{% endif %}>Ingreso</option>
+      <option value="gasto" {% if filtros.tipo == 'gasto' %}selected{% endif %}>Gasto</option>
+    </select>
+
+    <label>Categoría:</label>
+    <select name="categoria">
+      <option value="">-- Todas --</option>
+      {% for cat in categorias %}
+        <option value="{{ cat }}" {% if filtros.categoria == cat %}selected{% endif %}>{{ cat }}</option>
+      {% endfor %}
+    </select>
+
+    <label>Desde:</label>
+    <input type="date" name="fecha_inicio" value="{{ filtros.fecha_inicio }}">
+    <label>Hasta:</label>
+    <input type="date" name="fecha_fin" value="{{ filtros.fecha_fin }}">
+
+
+    <label>Nota:</label>
+    <input name="nota" value="{{ filtros.nota|default_if_none:'' }}">
+
+    <button type="submit">Aplicar filtros</button>
+    <a href="{% url 'movimientos' %}"><button type="button">Limpiar filtros</button></a>
+  </form>
 
   <table border="1" cellspacing="0" cellpadding="8">
     <thead>
@@ -26,7 +56,7 @@
             {% endif %}
           </td>
           <td>{{ movimiento.descripcion }}</td>
-          <td>{{ movimiento.categoria }}</td>
+          <td>{{ movimiento.get_categoria_display }}</td>
           <td>{{ movimiento.fecha }}</td>
           <td>{{ movimiento.nota|default:"—" }}</td>
           <td>

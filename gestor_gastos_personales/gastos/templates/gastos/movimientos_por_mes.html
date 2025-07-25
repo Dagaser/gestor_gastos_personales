@@ -1,0 +1,66 @@
+{% load humanize %}
+
+{% block content %}
+  <h1>Movimientos de {{ mes }}</h1>
+
+  <h3>Resumen del mes</h3>
+  <ul>
+    <li>Ingresos: <span style="color: green;">${{ resumen.ingresos|floatformat:2|intcomma }}</span></li>
+    <li>Gastos: <span style="color: red;">${{ resumen.gastos|floatformat:2|intcomma }}</span></li>
+    <li>Balance: 
+      <span style="color: {% if resumen.balance >= 0 %}green{% else %}red{% endif %};">
+        ${{ resumen.balance|floatformat:2|intcomma }}
+      </span>
+    </li>
+  </ul>
+
+  <h3>Lista de movimientos</h3>
+  <table border="1" cellspacing="0" cellpadding="8">
+    <thead>
+      <tr>
+        <th>Tipo</th>
+        <th>Monto</th>
+        <th>Descripción</th>
+        <th>Categoría</th>
+        <th>Fecha</th>
+        <th>Comprobante</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for movimiento in movimientos %}
+        <tr>
+          <td>{{ movimiento.get_tipo_display }}</td>
+          <td>
+            {% if movimiento.tipo == 'ingreso' %}
+              <span style="color: green;">{{ movimiento.monto|floatformat:2|intcomma }}</span>
+            {% else %}
+              <span style="color: red;">{{ movimiento.monto|floatformat:2|intcomma }}</span>
+            {% endif %}
+          </td>
+          <td>{{ movimiento.descripcion }}</td>
+          <td>{{ movimiento.get_categoria_display }}</td>
+          <td>{{ movimiento.fecha|date:"d M Y" }}</td>
+          <td>
+            {% if movimiento.comprobante %}
+              <a href="{{ movimiento.comprobante.url }}" target="_blank">
+                {% if movimiento.comprobante.url|lower|slice:"-4:" == ".jpg" or
+                      movimiento.comprobante.url|lower|slice:"-5:" == ".jpeg" or
+                      movimiento.comprobante.url|lower|slice:"-4:" == ".png" %}
+                  <img src="{{ movimiento.comprobante.url }}" alt="comprobante" width="60" />
+                {% else %}
+                  Ver
+                {% endif %}
+              </a>
+            {% else %}
+              —
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6">No hay movimientos registrados en este mes.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p><a href="{% url 'resumen' %}">← Volver al resumen mensual</a></p>
+{% endblock %}

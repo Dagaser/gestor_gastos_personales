@@ -42,6 +42,7 @@
         <th>Fecha</th>
         <th>Nota</th>
         <th>Comprobante</th>
+        <th>Acciones</th>
       </tr>
     </thead>
     <tbody>
@@ -75,7 +76,10 @@
               {% endwith %}
             {% endif %}
           </td>
-                    
+          <td>
+            <a href="{% url 'eliminar_movimiento' movimiento.id %}" style="color: red;">Eliminar</a>
+          </td>          
+               
         </tr>
       {% empty %}
         <tr>

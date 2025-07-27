@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.db import models
 from .models import Movimiento
 from django.contrib.auth.decorators import login_required
@@ -8,6 +8,7 @@ from django.db.models.functions import TruncMonth
 from collections import defaultdict
 from django.utils.timezone import now
 from datetime import datetime
+from django.contrib import messages
 
 @login_required
 def balance_view(request):
@@ -110,3 +111,10 @@ def resumen_view(request):
     return render(request, 'gastos/resumen.html', {
         'resumen': resumen_ordenado
     })
+
+@login_required
+def eliminar_movimiento(request, movimiento_id):
+    movimiento = get_object_or_404(Movimiento, id=movimiento_id, usuario=request.user)
+    movimiento.delete()
+    messages.success(request, "Movimiento eliminado correctamente.")
+    return redirect('movimientos')

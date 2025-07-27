@@ -1,0 +1,13 @@
+{% block content %}
+  <h2>¿Estás seguro de que quieres eliminar este movimiento?</h2>
+
+  <p><strong>Descripción:</strong> {{ movimiento.descripcion }}</p>
+  <p><strong>Monto:</strong> ${{ movimiento.monto }}</p>
+  <p><strong>Fecha:</strong> {{ movimiento.fecha }}</p>
+
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" style="background-color:red;color:white;">Sí, eliminar</button>
+    <a href="{% url 'movimientos' %}">Cancelar</a>
+  </form>
+{% endblock %}

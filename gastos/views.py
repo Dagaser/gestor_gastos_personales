@@ -9,6 +9,9 @@ from collections import defaultdict
 from django.utils.timezone import now
 from datetime import datetime
 from django.contrib import messages
+from django.template.loader import get_template
+from django.http import HttpResponse
+from xhtml2pdf import pisa 
 
 @login_required
 def balance_view(request):
@@ -85,31 +88,70 @@ def movimientos_view(request):
 
 @login_required
 def resumen_view(request):
-    movimientos = Movimiento.objects.filter(usuario=request.user)  # Obtiene todos los movimientos del ususario autenticado.
-    resumen = defaultdict(lambda: {'ingresos': 0, 'gastos': 0})     # Agrupar por mes y año.
-    
-    for mov in movimientos:
-        mes_ano = mov.fecha.strftime('%B %Y')
-        if mov.tipo == 'ingreso':
-            resumen[mes_ano]['ingresos'] += mov.monto
-        elif mov.tipo == 'gasto':
-            resumen[mes_ano]['gastos'] += mov.monto
-    
-    # Calcular balance
-    for mes_ano in resumen:
-        ingresos = resumen[mes_ano]['ingresos']
-        gastos = resumen[mes_ano]['gastos']
-        resumen[mes_ano]['balance'] = ingresos - gastos
+    movimientos = Movimiento.objects.filter(usuario=request.user)
+    resumen_temp = defaultdict(lambda: {'ingresos': 0, 'gastos': 0})
 
-    # Ordenar por fecha descendente
-    resumen_ordenado = sorted(
-        resumen.items(),
-        key=lambda x: datetime.strptime(x[0], '%B %Y'),
-        reverse=True
-    )
+    for mov in movimientos:
+        mes_key = mov.fecha.strftime('%Y-%m')  # Ej: '2025-07' → para URL
+        if mov.tipo == 'ingreso':
+            resumen_temp[mes_key]['ingresos'] += mov.monto
+        elif mov.tipo == 'gasto':
+            resumen_temp[mes_key]['gastos'] += mov.monto
+
+    # Armar resumen con clave y nombre legible
+    resumen = []
+    for mes_key, datos in resumen_temp.items():
+        ingresos = datos['ingresos']
+        gastos = datos['gastos']
+        balance = ingresos - gastos
+        mes_legible = datetime.strptime(mes_key, '%Y-%m').strftime('%B %Y')  # Ej: 'Julio 2025'
+        resumen.append((mes_key, mes_legible, ingresos, gastos, balance))
+
+    # Ordenar por mes_key descendente
+    resumen_ordenado = sorted(resumen, key=lambda x: x[0], reverse=True)
 
     return render(request, 'gastos/resumen.html', {
         'resumen': resumen_ordenado
+    })
+
+@login_required
+def movimientos_por_mes(request, mes):
+    """
+    Vista para mostrar los movimientos de un mes específico.
+    :param mes: str en formato 'YYYY-MM'
+    """
+    try:
+        # Convertir la cadena '2025-07' en año y mes enteros
+        año, mes_num = map(int, mes.split('-'))
+    except ValueError:
+        return render(request, 'error.html', {'mensaje': 'Formato de mes inválido.'})
+
+    # Filtrar movimientos del usuario en ese mes
+    movimientos = Movimiento.objects.filter(
+        usuario=request.user,
+        fecha__year=año,
+        fecha__month=mes_num
+    )
+
+    # Calcular ingresos y gastos del mes
+    ingresos = sum(m.monto for m in movimientos if m.tipo == 'ingreso')
+    gastos = sum(m.monto for m in movimientos if m.tipo == 'gasto')
+    balance = ingresos - gastos
+
+    resumen = {
+        'ingresos': ingresos,
+        'gastos': gastos,
+        'balance': balance,
+    }
+
+    # Mostrar el mes en formato legible
+    mes_legible = datetime(año, mes_num, 1).strftime('%B %Y')  # Ej: Julio 2025
+
+    return render(request, 'gastos/movimientos_por_mes.html', {
+        'movimientos': movimientos,
+        'resumen': resumen,
+        'mes': mes,
+        'mes_legible': mes_legible,
     })
 
 @login_required
@@ -118,3 +160,45 @@ def eliminar_movimiento(request, movimiento_id):
     movimiento.delete()
     messages.success(request, "Movimiento eliminado correctamente.")
     return redirect('movimientos')
+
+def exportar_movimientos_pdf(request):
+    movimientos = Movimiento.objects.filter(usuario=request.user)
+
+    template = get_template("gastos/pdf_movimientos.html")
+    html = template.render({"movimientos": movimientos})
+    
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = "attachment; filename=movimientos.pdf"
+    
+    pisa_status = pisa.CreatePDF(html, dest=response)
+    if pisa_status.err:
+        return HttpResponse("Error al generar PDF", status=500)
+    return response
+
+@login_required
+def exportar_pdf_mes(request, mes):
+    # Convertir mes a fecha para filtrar
+    try:
+        año, mes_num = map(int, mes.split('-'))
+        fecha_inicio = datetime.date(año, mes_num, 1)
+        if mes_num == 12:
+            fecha_fin = datetime.date(año + 1, 1, 1)
+        else:
+            fecha_fin = datetime.date(año, mes_num + 1, 1)
+    except:
+        return HttpResponse("Mes inválido", status=400)
+
+    movimientos = Movimiento.objects.filter(
+        usuario=request.user,
+        fecha__gte=fecha_inicio,
+        fecha__lt=fecha_fin
+    ).order_by('fecha')
+
+    template = get_template('gastos/pdf_por_mes.html')
+    html = template.render({'movimientos': movimientos, 'mes_legible': mes})
+    
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{mes}_movimientos.pdf"'
+
+    pisa.CreatePDF(html, dest=response)
+    return response

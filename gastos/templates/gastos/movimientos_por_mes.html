@@ -14,6 +14,8 @@
     </li>
   </ul>
 
+  <a href="{% url 'exportar_pdf_mes' mes=mes_legible %}" class="btn btn-primary">📄 Exportar a PDF</a>
+
   <h3>Lista de movimientos</h3>
   <table border="1" cellspacing="0" cellpadding="8">
     <thead>
@@ -43,15 +45,17 @@
           <td>
             {% if movimiento.comprobante %}
               <a href="{{ movimiento.comprobante.url }}" target="_blank">
-                {% if movimiento.comprobante.url|lower|slice:"-4:" == ".jpg" or
-                      movimiento.comprobante.url|lower|slice:"-5:" == ".jpeg" or
-                      movimiento.comprobante.url|lower|slice:"-4:" == ".png" %}
-                  <img src="{{ movimiento.comprobante.url }}" alt="comprobante" width="60" />
-                {% else %}
-                  Ver
-                {% endif %}
+                {% with ext=movimiento.comprobante.url|lower|slice:"-4:" ext5=movimiento.comprobante.url|lower|slice:"-5:" %}
+                  {% if ext == ".jpg" or ext5 == ".jpeg" or ext == ".png" %}
+                    <img src="{{ movimiento.comprobante.url }}" alt="comprobante" width="60" />
+                  {% endif %}
+                  {% if ext != ".jpg" and ext5 != ".jpeg" and ext != ".png" %}
+                    Ver
+                  {% endif %}
+                {% endwith %}
               </a>
-            {% else %}
+            {% endif %}
+            {% if not movimiento.comprobante %}
               —
             {% endif %}
           </td>

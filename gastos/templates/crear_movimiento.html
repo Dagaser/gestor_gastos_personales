@@ -1,18 +1,271 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Nuevo Movimiento</title>
-</head>
-<body>
-    <h1>Registrar Ingreso o Gasto</h1>
+{% extends "base.html" %}
 
-    <form method="POST" enctype="multipart/form-data">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Guardar</button>
-    </form>
+{% block title %}Nuevo Movimiento - Gestor de Gastos{% endblock %}
 
-    <p><a href="{% url 'balance' %}">Volver al Balance</a></p>
-</body>
-</html>
+{% block content %}
+<h1>Registrar Nuevo Movimiento</h1>
+
+<form method="POST" enctype="multipart/form-data" id="movimientoForm" novalidate>
+    {% csrf_token %}
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+        <!-- Tipo de movimiento -->
+        <div>
+            <label for="{{ form.tipo.id_for_label }}" style="font-weight: bold;">Tipo de Movimiento *</label>
+            {{ form.tipo }}
+            <div class="error-text"></div>
+            {% if form.tipo.errors %}
+                <div class="error-text">{{ form.tipo.errors.0 }}</div>
+            {% endif %}
+        </div>
+        
+        <!-- Monto -->
+        <div>
+            <label for="{{ form.monto.id_for_label }}" style="font-weight: bold;">Monto *</label>
+            {{ form.monto }}
+            <div class="error-text"></div>
+            {% if form.monto.errors %}
+                <div class="error-text">{{ form.monto.errors.0 }}</div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+        <!-- Categoría -->
+        <div>
+            <label for="{{ form.categoria.id_for_label }}" style="font-weight: bold;">Categoría *</label>
+            {{ form.categoria }}
+            <div class="error-text"></div>
+            {% if form.categoria.errors %}
+                <div class="error-text">{{ form.categoria.errors.0 }}</div>
+            {% endif %}
+        </div>
+        
+        <!-- Fecha -->
+        <div>
+            <label for="{{ form.fecha.id_for_label }}" style="font-weight: bold;">Fecha *</label>
+            {{ form.fecha }}
+            <div class="error-text"></div>
+            {% if form.fecha.errors %}
+                <div class="error-text">{{ form.fecha.errors.0 }}</div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Descripción -->
+    <div style="margin-bottom: 20px;">
+        <label for="{{ form.descripcion.id_for_label }}" style="font-weight: bold;">Descripción</label>
+        {{ form.descripcion }}
+        <div style="font-size: 0.875em; color: #6c757d;">
+            <span id="descripcion-counter">0</span>/500 caracteres
+        </div>
+        <div class="error-text"></div>
+        {% if form.descripcion.errors %}
+            <div class="error-text">{{ form.descripcion.errors.0 }}</div>
+        {% endif %}
+    </div>
+    
+    <!-- Comprobante -->
+    <div style="margin-bottom: 20px;">
+        <label for="{{ form.comprobante.id_for_label }}" style="font-weight: bold;">Comprobante</label>
+        {{ form.comprobante }}
+        <div style="font-size: 0.875em; color: #6c757d;">
+            Archivos permitidos: JPG, PNG, PDF, DOC, DOCX (máx. 5MB)
+        </div>
+        <div class="error-text"></div>
+        {% if form.comprobante.errors %}
+            <div class="error-text">{{ form.comprobante.errors.0 }}</div>
+        {% endif %}
+        
+        <!-- Preview de imagen -->
+        <div id="image-preview" style="margin-top: 10px; display: none;">
+            <img id="preview-img" style="max-width: 200px; max-height: 150px; border-radius: 4px;" />
+        </div>
+    </div>
+    
+    <!-- Nota -->
+    <div style="margin-bottom: 20px;">
+        <label for="{{ form.nota.id_for_label }}" style="font-weight: bold;">Notas Adicionales</label>
+        {{ form.nota }}
+        <div style="font-size: 0.875em; color: #6c757d;">
+            <span id="nota-counter">0</span>/1000 caracteres
+        </div>
+        <div class="error-text"></div>
+        {% if form.nota.errors %}
+            <div class="error-text">{{ form.nota.errors.0 }}</div>
+        {% endif %}
+    </div>
+    
+    <!-- Errores generales del form -->
+    {% if form.non_field_errors %}
+        <div class="error-text" style="margin-bottom: 20px;">
+            {{ form.non_field_errors.0 }}
+        </div>
+    {% endif %}
+    
+    <!-- Botones -->
+    <div style="text-align: center; margin-top: 30px;">
+        <button type="submit" class="btn btn-primary" id="submitBtn">
+            💾 Guardar Movimiento
+        </button>
+        <a href="{% url 'balance' %}" class="btn btn-secondary">❌ Cancelar</a>
+        <div class="loading">Guardando...</div>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('movimientoForm');
+    const tipoSelect = document.getElementById('{{ form.tipo.id_for_label }}');
+    const categoriaSelect = document.getElementById('{{ form.categoria.id_for_label }}');
+    const montoInput = document.getElementById('{{ form.monto.id_for_label }}');
+    const fechaInput = document.getElementById('{{ form.fecha.id_for_label }}');
+    const descripcionTextarea = document.getElementById('{{ form.descripcion.id_for_label }}');
+    const notaTextarea = document.getElementById('{{ form.nota.id_for_label }}');
+    const comprobanteInput = document.getElementById('{{ form.comprobante.id_for_label }}');
+    
+    // Establecer fecha actual por defecto
+    if (!fechaInput.value) {
+        fechaInput.value = new Date().toISOString().split('T')[0];
+    }
+    
+    // Contador de caracteres para descripción
+    if (descripcionTextarea) {
+        const counter = document.getElementById('descripcion-counter');
+        descripcionTextarea.addEventListener('input', function() {
+            counter.textContent = this.value.length;
+            if (this.value.length > 500) {
+                this.classList.add('error-field');
+            } else {
+                this.classList.remove('error-field');
+            }
+        });
+        counter.textContent = descripcionTextarea.value.length;
+    }
+    
+    // Contador de caracteres para nota
+    if (notaTextarea) {
+        const counter = document.getElementById('nota-counter');
+        notaTextarea.addEventListener('input', function() {
+            counter.textContent = this.value.length;
+            if (this.value.length > 1000) {
+                this.classList.add('error-field');
+            } else {
+                this.classList.remove('error-field');
+            }
+        });
+        counter.textContent = notaTextarea.value.length;
+    }
+    
+    // Filtrar categorías según el tipo
+    function filtrarCategorias() {
+        const tipo = tipoSelect.value;
+        const todasLasOpciones = categoriaSelect.querySelectorAll('option');
+        
+        todasLasOpciones.forEach(option => {
+            if (option.value === '') return; // Mantener opción vacía
+            
+            if (tipo === 'ingreso') {
+                // Mostrar solo categorías apropiadas para ingresos
+                option.style.display = ['salario', 'otros'].includes(option.value) ? 'block' : 'none';
+            } else if (tipo === 'gasto') {
+                // Mostrar categorías de gastos
+                option.style.display = ['alimento', 'transporte', 'gasolina', 'arriendo', 'servicios', 'creditos', 'targeta_credito', 'otros'].includes(option.value) ? 'block' : 'none';
+            } else {
+                option.style.display = 'block';
+            }
+        });
+    }
+    
+    tipoSelect.addEventListener('change', filtrarCategorias);
+    filtrarCategorias(); // Ejecutar al cargar
+    
+    // Preview de imagen
+    if (comprobanteInput) {
+        comprobanteInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const preview = document.getElementById('image-preview');
+            const img = document.getElementById('preview-img');
+            
+            if (file) {
+                // Validar tamaño (5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('El archivo es muy grande. Máximo 5MB permitido.');
+                    this.value = '';
+                    preview.style.display = 'none';
+                    return;
+                }
+                
+                // Mostrar preview si es imagen
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        img.src = e.target.result;
+                        preview.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    preview.style.display = 'none';
+                }
+            } else {
+                preview.style.display = 'none';
+            }
+        });
+    }
+    
+    // Validación del formulario
+    form.addEventListener('submit', function(e) {
+        let isValid = true;
+        
+        // Limpiar errores previos
+        document.querySelectorAll('.error-field').forEach(el => el.classList.remove('error-field'));
+        document.querySelectorAll('.error-text').forEach(el => el.textContent = '');
+        
+        // Validar monto
+        const monto = parseFloat(montoInput.value);
+        if (isNaN(monto) || monto <= 0) {
+            mostrarError(montoInput, 'El monto debe ser mayor a cero');
+            isValid = false;
+        } else if (monto > 999999999.99) {
+            mostrarError(montoInput, 'El monto es demasiado grande');
+            isValid = false;
+        }
+        
+        // Validar fecha
+        if (!fechaInput.value) {
+            mostrarError(fechaInput, 'La fecha es obligatoria');
+            isValid = false;
+        } else {
+            const fecha = new Date(fechaInput.value);
+            const hoy = new Date();
+            const unAnoFuturo = new Date();
+            unAnoFuturo.setFullYear(unAnoFuturo.getFullYear() + 1);
+            
+            if (fecha > unAnoFuturo) {
+                mostrarError(fechaInput, 'La fecha no puede ser más de un año en el futuro');
+                isValid = false;
+            }
+        }
+        
+        // Validar descripción si tiene contenido
+        if (descripcionTextarea.value.trim().length > 0 && descripcionTextarea.value.trim().length < 3) {
+            mostrarError(descripcionTextarea, 'La descripción debe tener al menos 3 caracteres');
+            isValid = false;
+        }
+        
+        if (!isValid) {
+            e.preventDefault();
+            alert('Por favor, corrige los errores en el formulario antes de continuar.');
+        }
+    });
+    
+    function mostrarError(input, mensaje) {
+        input.classList.add('error-field');
+        const errorDiv = input.parentNode.querySelector('.error-text');
+        if (errorDiv) {
+            errorDiv.textContent = mensaje;
+        }
+    }
+});
+</script>
+{% endblock %}

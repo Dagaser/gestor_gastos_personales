@@ -1,3 +1,51 @@
 asgiref==3.9.1
 Django==5.2.4
 sqlparse==0.5.3
+# requirements.txt - Dependencias del proyecto con mejoras de seguridad
+
+# Django y componentes principales
+Django>=4.2,<5.0
+django-humanize==0.1.2
+
+# Generación de PDF
+xhtml2pdf==0.2.11
+reportlab==4.0.4
+
+# Manejo de imágenes y archivos
+Pillow>=10.0.0
+python-magic>=0.4.27
+
+# Validaciones y seguridad
+python-decouple==3.8  # Para variables de entorno
+django-ratelimit==4.1.0  # Rate limiting
+django-axes==6.1.1  # Protección contra fuerza bruta
+
+# Base de datos y performance
+psycopg2-binary>=2.9.0  # PostgreSQL (opcional, para producción)
+
+# Logging y monitoreo
+sentry-sdk>=1.32.0  # Monitoreo de errores (opcional)
+
+# Testing y desarrollo
+pytest>=7.4.0
+pytest-django>=4.5.2
+pytest-cov>=4.1.0
+factory-boy>=3.3.0  # Para crear datos de prueba
+
+# Utilidades
+python-dateutil>=2.8.2
+pytz>=2023.3
+
+# Desarrollo (solo para entorno de desarrollo)
+django-debug-toolbar>=4.2.0
+flake8>=6.0.0
+black>=23.0.0
+
+# Opcional: Para deployment
+gunicorn>=21.2.0  # Servidor WSGI para producción
+whitenoise>=6.5.0  # Servir archivos estáticos
+django-cors-headers>=4.3.0  # CORS si necesitas API
+
+# Opcional: Para caché
+redis>=4.6.0
+django-redis>=5.3.0

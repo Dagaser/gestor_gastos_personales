@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    
+    <!-- Seguridad: Content Security Policy básico -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+    
+    <!-- Prevenir clickjacking -->
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    
+    <!-- Prevenir MIME type sniffing -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    
+    <title>{% block title %}Gestor de Gastos{% endblock %}</title>
+    
+    <style>
+        /* Estilos básicos seguros */
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background-color: #f5f5f5; 
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+        }
+        .messages { 
+            margin-bottom: 20px; 
+        }
+        .message { 
+            padding: 10px; 
+            margin: 5px 0; 
+            border-radius: 4px; 
+        }
+        .message.success { 
+            background-color: #d4edda; 
+            color: #155724; 
+            border: 1px solid #c3e6cb; 
+        }
+        .message.error { 
+            background-color: #f8d7da; 
+            color: #721c24; 
+            border: 1px solid #f5c6cb; 
+        }
+        .message.warning { 
+            background-color: #fff3cd; 
+            color: #856404; 
+            border: 1px solid #ffeaa7; 
+        }
+        .form-control {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 5px;
+        }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .table th, .table td { padding: 12px; border: 1px solid #ddd; text-align: left; }
+        .table th { background-color: #f8f9fa; font-weight: bold; }
+        .table tr:nth-child(even) { background-color: #f8f9fa; }
+        .nav { padding: 20px 0; border-bottom: 1px solid #ddd; margin-bottom: 20px; }
+        .nav a { margin-right: 20px; text-decoration: none; color: #007bff; }
+        .nav a:hover { text-decoration: underline; }
+        .loading { display: none; color: #666; }
+        .error-field { border-color: #dc3545 !important; }
+        .error-text { color: #dc3545; font-size: 0.875em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Navegación segura -->
+        {% if user.is_authenticated %}
+        <nav class="nav">
+            <a href="{% url 'balance' %}">Balance</a>
+            <a href="{% url 'crear_movimiento' %}">Nuevo Movimiento</a>
+            <a href="{% url 'movimientos' %}">Movimientos</a>
+            <a href="{% url 'resumen' %}">Resumen</a>
+            <span style="float: right;">
+                Hola, {{ user.username|capfirst }} | 
+                <a href="{% url 'admin:logout' %}">Cerrar Sesión</a>
+            </span>
+        </nav>
+        {% endif %}
+
+        <!-- Mensajes de sistema -->
+        {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+            <div class="message {{ message.tags }}">
+                {{ message|safe }}
+                <button onclick="this.parentElement.style.display='none'" style="float: right; background: none; border: none; cursor: pointer;">&times;</button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Contenido principal -->
+        <main>
+            {% block content %}
+            {% endblock %}
+        </main>
+    </div>
+
+    <!-- JavaScript seguro -->
+    <script>
+        // Función para confirmar eliminaciones
+        function confirmarEliminacion(mensaje) {
+            return confirm(mensaje || '¿Estás seguro de que quieres eliminar este elemento?');
+        }
+
+        // Función para mostrar loading en formularios
+        function mostrarLoading(form) {
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const loading = form.querySelector('.loading');
+            
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Procesando...';
+            }
+            
+            if (loading) {
+                loading.style.display = 'inline';
+            }
+        }
+
+        // Validación básica del lado del cliente
+        function validarMonto(input) {
+            const valor = parseFloat(input.value);
+            const errorDiv = input.nextElementSibling;
+            
+            if (isNaN(valor) || valor <= 0) {
+                input.classList.add('error-field');
+                if (errorDiv && errorDiv.classList.contains('error-text')) {
+                    errorDiv.textContent = 'El monto debe ser mayor a cero';
+                }
+                return false;
+            } else {
+                input.classList.remove('error-field');
+                if (errorDiv && errorDiv.classList.contains('error-text')) {
+                    errorDiv.textContent = '';
+                }
+                return true;
+            }
+        }
+
+        // Auto-ocultar mensajes después de 5 segundos
+        document.addEventListener('DOMContentLoaded', function() {
+            const messages = document.querySelectorAll('.message');
+            messages.forEach(function(message) {
+                setTimeout(function() {
+                    message.style.opacity = '0';
+                    setTimeout(function() {
+                        message.style.display = 'none';
+                    }, 300);
+                }, 5000);
+            });
+
+            // Agregar validación en tiempo real a campos de monto
+            const montoInputs = document.querySelectorAll('input[name="monto"]');
+            montoInputs.forEach(function(input) {
+                input.addEventListener('blur', function() {
+                    validarMonto(this);
+                });
+            });
+        });
+
+        // Prevenir doble envío de formularios
+        document.addEventListener('DOMContentLoaded', function() {
+            const forms = document.querySelectorAll('form');
+            forms.forEach(function(form) {
+                form.addEventListener('submit', function(e) {
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    if (submitBtn && submitBtn.disabled) {
+                        e.preventDefault();
+                        return false;
+                    }
+                    mostrarLoading(form);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

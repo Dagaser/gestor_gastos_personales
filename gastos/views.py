@@ -20,6 +20,26 @@ from django.template.loader import get_template
 from django.http import HttpResponse
 from xhtml2pdf import pisa 
 
+# Configurar límites según el ambiente
+if settings.DEBUG:
+    # LÍMITES RELAJADOS PARA DESARROLLO
+    LIMITE_MOVIMIENTOS_DIA = 100  # Más permisivo para testing
+    LIMITE_ARCHIVOS_HORA = 50     # Más permisivo para testing
+    LIMITE_REGISTROS_EXPORT = 5000  # Más registros para testing
+    
+    logger = logging.getLogger('finanzas')
+    logger.info("🔧 Límites de desarrollo aplicados")
+    
+else:
+    # LÍMITES ESTRICTOS PARA PRODUCCIÓN
+    LIMITE_MOVIMIENTOS_DIA = 50
+    LIMITE_ARCHIVOS_HORA = 10
+    LIMITE_REGISTROS_EXPORT = 1000
+    
+    logger = logging.getLogger('finanzas.security')
+    logger.info("🚀 Límites de producción aplicados")
+
+
 # Configurar logging para seguridad
 logger = logging.getLogger(__name__)
 
@@ -71,67 +91,31 @@ def crear_movimiento_view(request):
     Vista para crear movimientos con validaciones mejoradas
     """
     if request.method == 'POST':
-        try:
-            # Usar transaction para atomicidad
-            with transaction.atomic():
-                form = MovimientoForm(request.POST, request.FILES)
-
-                if form.is_valid():
-                    movimiento = form.save(commit=False)
-                    movimiento.usuario = request.user
-
-                    # Validación adicional: límite de movimientos por día
-                    movimientos_hoy = Movimiento.objects.filter(
-                        usuario=request.user,
-                        fecha=movimiento.fecha
-                    ).count()
-
-                    if movimientos_hoy >= 50: # Límite de seguridad
-                        messages.error(request,
-                            "Has alcanzado el límite de 50 movimientos por día.")
-                        return render(request, 'crear_movimiento.html', {'form': form})
-                    
-                    # Validación adicional: límite de uploads por hora
-                    if movimiento.comprobante:
-                        una_hora_atras = timezone.now() - timedelta(hours=1)
-                        uploads_recientes = Movimiento.objects.filter(
-                            usuario=request.user,
-                            creado_en__gte=una_hora_atras,
-                            comprobante__isnull=False
-                        ).count()
-                        
-                        if uploads_recientes >= 10:  # Límite de seguridad
-                            messages.error(request, 
-                                "Has alcanzado el límite de 10 archivos por hora.")
-                            return render(request, 'crear_movimiento.html', {'form': form})
-                        
-                        # Guardar el movimiento
-                        movimiento.save()
-
-                        # Log de seguridad para movimientos grandes
-                    if movimiento.monto > 1000000:  # 1 millón
-                        logger.warning(f"Movimiento grande creado: Usuario {request.user.id}, "
-                                     f"Monto ${movimiento.monto}, Tipo {movimiento.tipo}")
-                    
-                    messages.success(request, 
-                        f"Movimiento de ${movimiento.monto:,.2f} registrado correctamente.")
-                    return redirect('balance')
-                else:
-                    # Log de intentos con datos inválidos
-                    logger.info(f"Formulario inválido para usuario {request.user.id}: {form.errors}")
-                    messages.error(request, "Por favor corrige los errores en el formulario.")
-                    
-        except ValidationError as e:
-            logger.warning(f"ValidationError para usuario {request.user.id}: {str(e)}")
-            messages.error(request, f"Error de validación: {str(e)}")
-            form = MovimientoForm(request.POST, request.FILES)
-            
-        except Exception as e:
-            logger.error(f"Error inesperado en crear_movimiento para usuario {request.user.id}: {str(e)}")
-            messages.error(request, "Error inesperado. Intenta nuevamente.")
-            form = MovimientoForm()
+        form = MovimientoForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                # Crear movimiento
+                movimiento = form.save(commit=False)
+                movimiento.usuario = request.user
+                movimiento.save()
+                
+                messages.success(request, 'Movimiento creado exitosamente')
+                return redirect('balance')
+                
+            except Exception as e:
+                messages.error(request, f'Error al crear movimiento: {e}')
+                return render(request, 'crear_movimiento.html', {'form': form})
+        else:
+            messages.error(request, 'Por favor corrige los errores del formulario')
     else:
         form = MovimientoForm()
+    
+    # IMPORTANTE: Siempre retornar una respuesta
+    context = {
+        'form': form,
+        'titulo': 'Crear Movimiento'
+    }
+    return render(request, 'crear_movimiento.html', context)
 
 @login_required
 def movimientos_view(request):

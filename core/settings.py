@@ -10,23 +10,25 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-import os
+"""
+Django settings para gestor_gastos_personales project.
+CONFIGURACIÓN PARA DESARROLLO - Corregida
+"""
+
 from pathlib import Path
+from decouple import config
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-&5qc$nyxslmf6n2*-1h(s-+n+2!fk(87i95qr@50^$fg)eqqso'
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-key-change-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
+DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost', cast=lambda v: [s.strip() for s in v.split(',')])
 
 # Application definition
 INSTALLED_APPS = [
@@ -36,8 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.humanize',  # Para formateo de números
-    'gastos',  # Tu app
+    'django.contrib.humanize',  # Para formatear números y fechas
+    'gastos', #app principal
 ]
 
 MIDDLEWARE = [
@@ -85,9 +87,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-        'OPTIONS': {
-            'min_length': 8,
-        }
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -98,210 +97,170 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # Internationalization
-LANGUAGE_CODE = 'es-es'
+LANGUAGE_CODE = 'es-co'
 TIME_ZONE = 'America/Bogota'
 USE_I18N = True
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
-    BASE_DIR / 'static',
+    BASE_DIR / "static",
 ]
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Media files (user uploads)
+# Media files (uploads)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# ==============================================================================
-# CONFIGURACIONES DE SEGURIDAD
-# ==============================================================================
+# ========================================
+# CONFIGURACIONES POR AMBIENTE
+# ========================================
 
-# Security Settings
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
-X_FRAME_OPTIONS = 'DENY'
-SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
+if DEBUG:
+    # ========================================
+    # CONFIGURACIÓN DE DESARROLLO
+    # ========================================
+    print("🔧 MODO DESARROLLO ACTIVADO")
+    
+    # Seguridad relajada para desarrollo local
+    SECURE_SSL_REDIRECT = False
+    SECURE_HSTS_SECONDS = 0
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
+    
+    # Cookies sin HTTPS
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    
+    # Headers básicos (sin romper desarrollo)
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True
+    X_FRAME_OPTIONS = 'DENY'
+    
+    # Sin CSP restrictivo en desarrollo
+    # SECURE_CONTENT_SECURITY_POLICY = None
+    
+    # Configuraciones de desarrollo
+    SESSION_COOKIE_AGE = 86400  # 1 día en desarrollo
+    CSRF_COOKIE_AGE = 86400
+    
+    # Logging simple para desarrollo
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'simple': {
+                'format': '{levelname} {message}',
+                'style': '{',
+            },
+        },
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+                'formatter': 'simple',
+            },
+        },
+        'loggers': {
+            'django': {
+                'handlers': ['console'],
+                'level': 'INFO',
+            },
+            'finanzas': {  # Tu app
+                'handlers': ['console'],
+                'level': 'DEBUG',
+            },
+        },
+    }
+    
+    print("✅ Configuración de desarrollo aplicada")
+    print("🌐 Accede a: http://127.0.0.1:8000/")
 
-# Session Security
-SESSION_COOKIE_SECURE = not DEBUG  # Solo HTTPS en producción
-SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_AGE = 3600  # 1 hora
+else:
+    # ========================================  
+    # CONFIGURACIÓN DE PRODUCCIÓN
+    # ========================================
+    print("🚀 MODO PRODUCCIÓN ACTIVADO")
+    
+    # Seguridad estricta para producción
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 año
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    
+    # Cookies seguras
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    
+    # Headers de seguridad completos
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True
+    X_FRAME_OPTIONS = 'DENY'
+    
+    # CSP estricto para producción
+    SECURE_CONTENT_SECURITY_POLICY = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "font-src 'self';"
+    )
+    
+    # Configuraciones de producción
+    SESSION_COOKIE_AGE = 3600  # 1 hora en producción
+    CSRF_COOKIE_AGE = 3600
+    
+    # Logging completo para producción
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'verbose': {
+                'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+                'style': '{',
+            },
+        },
+        'handlers': {
+            'file': {
+                'class': 'logging.FileHandler',
+                'filename': BASE_DIR / 'logs' / 'django.log',
+                'formatter': 'verbose',
+            },
+            'security_file': {
+                'class': 'logging.FileHandler', 
+                'filename': BASE_DIR / 'logs' / 'security.log',
+                'formatter': 'verbose',
+            },
+        },
+        'loggers': {
+            'django': {
+                'handlers': ['file'],
+                'level': 'WARNING',
+            },
+            'finanzas.security': {
+                'handlers': ['security_file'],
+                'level': 'INFO',
+            },
+        },
+    }
+
+# ========================================
+# CONFIGURACIONES COMUNES (DESARROLLO Y PRODUCCIÓN)
+# ========================================
+
+# Límites de archivos (aplicables en ambos ambientes)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
+
+# Configuraciones de sesión comunes
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
-# CSRF Protection
-CSRF_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_HTTPONLY = True
-CSRF_COOKIE_SAMESITE = 'Strict'
-CSRF_FAILURE_VIEW = 'django.views.csrf.csrf_failure'
-
-# File Upload Security
-FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
-DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
-FILE_UPLOAD_PERMISSIONS = 0o644
-DATA_UPLOAD_MAX_NUMBER_FIELDS = 100
-
-# Allowed file extensions for uploads
-ALLOWED_UPLOAD_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.pdf', '.doc', '.docx']
-MAX_UPLOAD_SIZE = 5242880  # 5MB en bytes
-
-# Login/Logout URLs
-LOGIN_URL = '/admin/login/'
-LOGIN_REDIRECT_URL = '/balance/'
-LOGOUT_REDIRECT_URL = '/admin/login/'
-
-# ==============================================================================
-# LOGGING CONFIGURATION
-# ==============================================================================
-
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
-        },
-        'simple': {
-            'format': '{levelname} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs' / 'django.log',
-            'formatter': 'verbose',
-        },
-        'security_file': {
-            'level': 'WARNING',
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs' / 'security.log',
-            'formatter': 'verbose',
-        },
-        'console': {
-            'level': 'INFO',
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['file', 'console'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'gastos.views': {
-            'handlers': ['security_file', 'console'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'django.security': {
-            'handlers': ['security_file'],
-            'level': 'WARNING',
-            'propagate': True,
-        },
-    },
-}
-
-# Crear directorio de logs si no existe
-LOGS_DIR = BASE_DIR / 'logs'
-LOGS_DIR.mkdir(exist_ok=True)
-
-# ==============================================================================
-# CACHE CONFIGURATION (Opcional para performance)
-# ==============================================================================
-
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'unique-snowflake',
-        'TIMEOUT': 300,  # 5 minutos
-        'OPTIONS': {
-            'MAX_ENTRIES': 1000,
-        }
-    }
-}
-
-# ==============================================================================
-# EMAIL CONFIGURATION (Para notificaciones futuras)
-# ==============================================================================
-
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # Desarrollo
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # Producción
-
-EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@gestorgastos.com')
-
-# ==============================================================================
-# CONFIGURACIONES PERSONALIZADAS DE LA APP
-# ==============================================================================
-
-# Límites de la aplicación
-MAX_MOVIMIENTOS_POR_DIA = 50
-MAX_UPLOADS_POR_HORA = 10
-MAX_MOVIMIENTOS_EXPORTAR = 1000
-PAGINACION_DEFAULT = 25
-
-# Categorías permitidas (validación adicional)
-CATEGORIAS_INGRESOS = ['salario', 'otros']
-CATEGORIAS_GASTOS = ['alimento', 'transporte', 'gasolina', 'arriendo', 
-                     'servicios', 'creditos', 'targeta_credito', 'otros']
-
-# Configuraciones de formato
-DECIMAL_PLACES = 2
-MAX_DIGITS = 12
-
-# ==============================================================================
-# CONFIGURACIONES ESPECÍFICAS POR AMBIENTE
-# ==============================================================================
-
-if DEBUG:
-    # Configuraciones de desarrollo
-    ALLOWED_HOSTS = ['*']
-    
-    # Toolbar de debug (opcional)
-    # INSTALLED_APPS += ['debug_toolbar']
-    # MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
-    # INTERNAL_IPS = ['127.0.0.1']
-    
-else:
-    # Configuraciones de producción
-    SECURE_SSL_REDIRECT = True
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    
-    # Configurar base de datos de producción
-    # DATABASES['default'] = {
-    #     'ENGINE': 'django.db.backends.postgresql',
-    #     'NAME': os.environ.get('DB_NAME'),
-    #     'USER': os.environ.get('DB_USER'),
-    #     'PASSWORD': os.environ.get('DB_PASSWORD'),
-    #     'HOST': os.environ.get('DB_HOST', 'localhost'),
-    #     'PORT': os.environ.get('DB_PORT', '5432'),
-    # }
-
-# ==============================================================================
-# MENSAJES PERSONALIZADOS
-# ==============================================================================
-
-from django.contrib.messages import constants as messages
-
-MESSAGE_TAGS = {
-    messages.DEBUG: 'debug',
-    messages.INFO: 'info',
-    messages.SUCCESS: 'success',
-    messages.WARNING: 'warning',
-    messages.ERROR: 'error',
-}
+# Configuraciones de internacionalización
+USE_L10N = True
+DECIMAL_SEPARATOR = ','
+THOUSAND_SEPARATOR = '.'
+USE_THOUSAND_SEPARATOR = True

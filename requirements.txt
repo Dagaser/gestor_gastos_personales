@@ -1,51 +1,23 @@
-asgiref==3.9.1
-Django==5.2.4
-sqlparse==0.5.3
-# requirements.txt - Dependencias del proyecto con mejoras de seguridad
+# DEPENDENCIAS MÍNIMAS PARA EL ESTADO ACTUAL DEL PROYECTO
+# (Solo lo que realmente se está usando)
 
-# Django y componentes principales
+# Framework principal
 Django>=4.2,<5.0
-django-humanize==0.1.2
 
-# Generación de PDF
-xhtml2pdf==0.2.11
-reportlab==4.0.4
+# Para manejo de imágenes (FileField de comprobantes)
+Pillow>=8.0.0
 
-# Manejo de imágenes y archivos
-Pillow>=10.0.0
-python-magic>=0.4.27
+# Para export PDF (ya lo tenías funcionando)
+xhtml2pdf>=0.2.5
 
-# Validaciones y seguridad
-python-decouple==3.8  # Para variables de entorno
-django-ratelimit==4.1.0  # Rate limiting
-django-axes==6.1.1  # Protección contra fuerza bruta
+# Para variables de entorno (si estás usando)
+python-decouple>=3.6
 
-# Base de datos y performance
-psycopg2-binary>=2.9.0  # PostgreSQL (opcional, para producción)
+# NUEVAS DEPENDENCIAS que agregamos en las mejoras:
+# (Estas son opcionales, el proyecto funciona sin ellas)
 
-# Logging y monitoreo
-sentry-sdk>=1.32.0  # Monitoreo de errores (opcional)
+# Para validación de tipos MIME reales (opcional)
+# python-magic>=0.4.27
 
-# Testing y desarrollo
-pytest>=7.4.0
-pytest-django>=4.5.2
-pytest-cov>=4.1.0
-factory-boy>=3.3.0  # Para crear datos de prueba
-
-# Utilidades
-python-dateutil>=2.8.2
-pytz>=2023.3
-
-# Desarrollo (solo para entorno de desarrollo)
-django-debug-toolbar>=4.2.0
-flake8>=6.0.0
-black>=23.0.0
-
-# Opcional: Para deployment
-gunicorn>=21.2.0  # Servidor WSGI para producción
-whitenoise>=6.5.0  # Servir archivos estáticos
-django-cors-headers>=4.3.0  # CORS si necesitas API
-
-# Opcional: Para caché
-redis>=4.6.0
-django-redis>=5.3.0
+# Para logging estructurado (opcional) 
+# python-json-logger>=2.0.7

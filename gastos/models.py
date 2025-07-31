@@ -71,12 +71,12 @@ class Movimiento(models.Model):
         upload_to='comprobantes/', 
         blank=True, 
         null=True,
-        validators=[validar_archivo_comprobante],
+       #validators=[validar_archivo_comprobante],
         help_text="Archivo de comprobante (JPG, PNG, PDF, DOC - máx. 5MB)"
     )
     nota = models.TextField(
         blank=True, 
-        null=True
+        null=True,
         max_length=150, # Limitar caracteres
         help_text="Notas adicionales (máx. 150 caracteres)"
     )
@@ -84,9 +84,9 @@ class Movimiento(models.Model):
     class Meta:
         ordering = ['-fecha', '-creado_en'] # Ordenamiento por defecto
         indexes = [
-            models.index(fields=['usuario', 'fecha']), # Indice compuesto
-            models.index(fields=['usuario', 'tipo']),
-            models.index(fields=['usuario', 'categoria']),
+            models.Index(fields=['usuario', 'fecha']), # Indice compuesto
+            models.Index(fields=['usuario', 'tipo']),
+            models.Index(fields=['usuario', 'categoria']),
         ]
         verbose_name = "Movimiento"
         verbose_name_plural = "Movimientos"

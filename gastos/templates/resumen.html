@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Resumen Mensual - Gestor de Gastos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>📊 Resumen Mensual</h1>
+        <div class="btn-group" role="group">
+            <a href="{% url 'balance' %}" class="btn btn-outline-primary">🏠 Balance</a>
+            <a href="{% url 'movimientos' %}" class="btn btn-outline-secondary">📋 Movimientos</a>
+        </div>
+    </div>
+    
+    <!-- Resumen general anual -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="card-body text-white">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <h3>${{ totales_anuales.ingresos|floatformat:0|intcomma }}</h3>
+                            <p class="mb-0">💰 Total Ingresos {{ anio_seleccionado }}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h3>${{ totales_anuales.gastos|floatformat:0|intcomma }}</h3>
+                            <p class="mb-0">💸 Total Gastos {{ anio_seleccionado }}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h3 class="{% if totales_anuales.balance >= 0 %}text-success{% else %}text-warning{% endif %}">
+                                ${{ totales_anuales.balance|floatformat:0|intcomma }}
+                            </h3>
+                            <p class="mb-0">⚖️ Balance {{ anio_seleccionado }}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h3>{{ totales_anuales.meses_activos }}</h3>
+                            <p class="mb-0">📅 Meses con actividad</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filtros por año -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Filtrar por año:</label>
+                    <select name="anio" class="form-select" onchange="this.form.submit()">
+                        {% for anio in anios_disponibles %}
+                            <option value="{{ anio }}" {% if anio == anio_seleccionado %}selected{% endif %}>
+                                {{ anio }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Vista:</label>
+                    <select name="vista" class="form-select" onchange="this.form.submit()">
+                        <option value="tarjetas" {% if vista == 'tarjetas' %}selected{% endif %}>📊 Tarjetas</option>
+                        <option value="tabla" {% if vista == 'tabla' %}selected{% endif %}>📋 Tabla</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <a href="#" class="btn btn-outline-danger">📄 PDF Año Completo</a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Vista por tarjetas (default) -->
+    {% if vista == 'tarjetas' or not vista %}
+    <div class="row">
+        {% for mes in resumen_mensual %}
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100 {% if mes.balance >= 0 %}border-success{% else %}border-danger{% endif %}">
+                <div class="card-header d-flex justify-content-between align-items-center {% if mes.balance >= 0 %}bg-success text-white{% else %}bg-danger text-white{% endif %}">
+                    <h5 class="mb-0">📅 {{ mes.mes_nombre }} {{ mes.anio }}</h5>
+                    <span class="badge bg-light text-dark">{{ mes.cantidad_movimientos }}</span>
+                </div>
+                <div class="card-body">
+                    <!-- Estadísticas del mes -->
+                    <div class="row text-center mb-3">
+                        <div class="col-4">
+                            <h6 class="text-success">💰 Ingresos</h6>
+                            <strong class="text-success">${{ mes.total_ingresos|floatformat:0|intcomma }}</strong>
+                        </div>
+                        <div class="col-4">
+                            <h6 class="text-danger">💸 Gastos</h6>
+                            <strong class="text-danger">${{ mes.total_gastos|floatformat:0|intcomma }}</strong>
+                        </div>
+                        <div class="col-4">
+                            <h6 class="{% if mes.balance >= 0 %}text-success{% else %}text-danger{% endif %}">⚖️ Balance</h6>
+                            <strong class="{% if mes.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                ${{ mes.balance|floatformat:0|intcomma }}
+                            </strong>
+                        </div>
+                    </div>
+                    
+                    <!-- Promedio diario -->
+                    <div class="text-center text-muted">
+                        <small>
+                            📊 Promedio diario: ${{ mes.promedio_diario|floatformat:0|intcomma }}<br>
+                            📈 Movimientos: {{ mes.cantidad_movimientos }} ({{ mes.promedio_movimientos_dia|floatformat:1 }}/día)
+                        </small>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'movimientos' %}?fecha_desde={{ mes.primer_dia }}&fecha_hasta={{ mes.ultimo_dia }}" 
+                           class="btn btn-outline-primary btn-sm">
+                            👁️ Ver Detalle
+                        </a>
+                        <a href="#" class="btn btn-outline-danger btn-sm">
+                            📄 PDF
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <h4 class="text-muted">📊 No hay datos para {{ anio_seleccionado }}</h4>
+                    <p class="text-muted">No se encontraron movimientos para el año seleccionado.</p>
+                    <a href="{% url 'crear_movimiento' %}" class="btn btn-primary">
+                        ➕ Crear Primer Movimiento
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- Vista tabla -->
+    {% if vista == 'tabla' %}
+    <div class="card">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">📋 Resumen Tabular {{ anio_seleccionado }}</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>📅 Mes</th>
+                            <th class="text-end">💰 Ingresos</th>
+                            <th class="text-end">💸 Gastos</th>
+                            <th class="text-end">⚖️ Balance</th>
+                            <th class="text-center">📊 Movimientos</th>
+                            <th class="text-center">📈 Promedio/día</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for mes in resumen_mensual %}
+                        <tr>
+                            <td><strong>{{ mes.mes_nombre }}</strong></td>
+                            <td class="text-end text-success">
+                                <strong>${{ mes.total_ingresos|floatformat:0|intcomma }}</strong>
+                            </td>
+                            <td class="text-end text-danger">
+                                <strong>${{ mes.total_gastos|floatformat:0|intcomma }}</strong>
+                            </td>
+                            <td class="text-end">
+                                <strong class="{% if mes.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                    ${{ mes.balance|floatformat:0|intcomma }}
+                                </strong>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-secondary">{{ mes.cantidad_movimientos }}</span>
+                            </td>
+                            <td class="text-center">
+                                <small>${{ mes.promedio_diario|floatformat:0 }}</small>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <div class="text-muted">
+                                    No hay datos para mostrar en {{ anio_seleccionado }}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    {% if resumen_mensual %}
+                    <tfoot class="table-secondary">
+                        <tr>
+                            <th>📊 TOTAL {{ anio_seleccionado }}</th>
+                            <th class="text-end text-success">
+                                ${{ totales_anuales.ingresos|floatformat:0|intcomma }}
+                            </th>
+                            <th class="text-end text-danger">
+                                ${{ totales_anuales.gastos|floatformat:0|intcomma }}
+                            </th>
+                            <th class="text-end {% if totales_anuales.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                ${{ totales_anuales.balance|floatformat:0|intcomma }}
+                            </th>
+                            <th class="text-center">
+                                <span class="badge bg-dark">{{ totales_anuales.total_movimientos }}</span>
+                            </th>
+                            <th class="text-center">
+                                <small>${{ totales_anuales.promedio_mensual|floatformat:0 }}</small>
+                            </th>
+                        </tr>
+                    </tfoot>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Acciones rápidas -->
+    <div class="text-center mt-4">
+        <div class="btn-group" role="group">
+            <a href="{% url 'crear_movimiento' %}" class="btn btn-success">
+                ➕ Nuevo Movimiento
+            </a>
+            <a href="{% url 'movimientos' %}" class="btn btn-primary">
+                📋 Ver Movimientos
+            </a>
+            <a href="{% url 'balance' %}" class="btn btn-outline-primary">
+                🏠 Ir al Balance
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

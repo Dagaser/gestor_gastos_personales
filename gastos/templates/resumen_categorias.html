@@ -1,0 +1,618 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Resumen por Categorías - Gestor de Gastos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>🏷️ Resumen por Categorías</h1>
+        <div class="btn-group" role="group">
+            <a href="{% url 'balance' %}" class="btn btn-outline-primary">🏠 Balance</a>
+            <a href="{% url 'movimientos' %}" class="btn btn-outline-secondary">📋 Movimientos</a>
+            <a href="{% url 'resumen' %}" class="btn btn-outline-info">📊 Resumen Mensual</a>
+        </div>
+    </div>
+    
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Período:</label>
+                    <select name="periodo" class="form-select" onchange="this.form.submit()">
+                        <option value="todos" {% if periodo == 'todos' %}selected{% endif %}>Todos los tiempos</option>
+                        <option value="este_ano" {% if periodo == 'este_ano' %}selected{% endif %}>Este año</option>
+                        <option value="ultimo_ano" {% if periodo == 'ultimo_ano' %}selected{% endif %}>Último año</option>
+                        <option value="este_mes" {% if periodo == 'este_mes' %}selected{% endif %}>Este mes</option>
+                        <option value="ultimos_3_meses" {% if periodo == 'ultimos_3_meses' %}selected{% endif %}>Últimos 3 meses</option>
+                        <option value="ultimos_6_meses" {% if periodo == 'ultimos_6_meses' %}selected{% endif %}>Últimos 6 meses</option>
+                        <option value="personalizado" {% if periodo == 'personalizado' %}selected{% endif %}>Personalizado</option>
+                    </select>
+                </div>
+                
+                <!-- Fechas personalizadas (mostrar solo si se selecciona personalizado) -->
+                <div class="col-md-2" id="fechaDesde" {% if periodo != 'personalizado' %}style="display: none;"{% endif %}>
+                    <label class="form-label">Desde:</label>
+                    <input type="date" name="fecha_desde" class="form-control" value="{{ request.GET.fecha_desde }}">
+                </div>
+                <div class="col-md-2" id="fechaHasta" {% if periodo != 'personalizado' %}style="display: none;"{% endif %}>
+                    <label class="form-label">Hasta:</label>
+                    <input type="date" name="fecha_hasta" class="form-control" value="{{ request.GET.fecha_hasta }}">
+                </div>
+                
+                <div class="col-md-2">
+                    <label class="form-label">Tipo:</label>
+                    <select name="tipo_filtro" class="form-select" onchange="this.form.submit()">
+                        <option value="ambos" {% if tipo_filtro == 'ambos' %}selected{% endif %}>Ingresos y Gastos</option>
+                        <option value="gastos" {% if tipo_filtro == 'gastos' %}selected{% endif %}>Solo Gastos</option>
+                        <option value="ingresos" {% if tipo_filtro == 'ingresos' %}selected{% endif %}>Solo Ingresos</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">🔍 Aplicar</button>
+                        <a href="{% url 'export_categorias_pdf' %}?{{ request.GET.urlencode }}" class="btn btn-outline-danger">
+                            📄 PDF
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Resumen general -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h5>💰 Total Ingresos</h5>
+                    <h3>${{ total_ingresos|floatformat:0|intcomma }}</h3>
+                    <small>{{ categorias_ingresos.count }} categoría{{ categorias_ingresos.count|pluralize }}</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body text-center">
+                    <h5>💸 Total Gastos</h5>
+                    <h3>${{ total_gastos|floatformat:0|intcomma }}</h3>
+                    <small>{{ categorias_gastos.count }} categoría{{ categorias_gastos.count|pluralize }}</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card {% if balance >= 0 %}bg-info{% else %}bg-warning{% endif %} text-white">
+                <div class="card-body text-center">
+                    <h5>⚖️ Balance</h5>
+                    <h3>${{ balance|floatformat:0|intcomma }}</h3>
+                    <small>Período: {{ periodo_texto }}</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body text-center">
+                    <h5>📊 Total Movimientos</h5>
+                    <h3>{{ total_movimientos }}</h3>
+                    <small>{{ total_categorias }} categorías únicas</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Contenido principal con tabs -->
+    <div class="card">
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs" id="categoriaTabs" role="tablist">
+                {% if tipo_filtro == 'ambos' or tipo_filtro == 'gastos' %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="gastos-tab" data-bs-toggle="tab" data-bs-target="#gastos" type="button" role="tab">
+                        💸 Gastos por Categoría
+                    </button>
+                </li>
+                {% endif %}
+                {% if tipo_filtro == 'ambos' or tipo_filtro == 'ingresos' %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link {% if tipo_filtro == 'ingresos' %}active{% endif %}" id="ingresos-tab" data-bs-toggle="tab" data-bs-target="#ingresos" type="button" role="tab">
+                        💰 Ingresos por Categoría
+                    </button>
+                </li>
+                {% endif %}
+                {% if tipo_filtro == 'ambos' %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="comparacion-tab" data-bs-toggle="tab" data-bs-target="#comparacion" type="button" role="tab">
+                        📊 Comparación
+                    </button>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+        <div class="card-body">
+            <div class="tab-content" id="categoriaTabContent">
+                
+                <!-- Tab Gastos -->
+                {% if tipo_filtro == 'ambos' or tipo_filtro == 'gastos' %}
+                <div class="tab-pane fade show active" id="gastos" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h5 class="text-danger mb-3">💸 Distribución de Gastos</h5>
+                            {% if categorias_gastos %}
+                                {% for categoria in categorias_gastos %}
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="fw-bold">
+                                            🏷️ {{ categoria.categoria|title }}
+                                        </span>
+                                        <div class="text-end">
+                                            <span class="fw-bold text-danger">${{ categoria.total|floatformat:0|intcomma }}</span>
+                                            <small class="text-muted">({{ categoria.porcentaje|floatformat:1 }}%)</small>
+                                        </div>
+                                    </div>
+                                    <div class="progress mb-1" style="height: 20px;">
+                                        <div class="progress-bar bg-danger" 
+                                             style="width: {{ categoria.porcentaje }}%"
+                                             title="{{ categoria.categoria }}: ${{ categoria.total|floatformat:0 }}">
+                                        </div>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-muted">
+                                            {{ categoria.cantidad }} movimiento{{ categoria.cantidad|pluralize }}
+                                        </small>
+                                        <small class="text-muted">
+                                            Promedio: ${{ categoria.promedio|floatformat:0|intcomma }}
+                                        </small>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center text-muted py-4">
+                                    <h6>No hay gastos en el período seleccionado</h6>
+                                    <a href="{% url 'crear_movimiento' %}" class="btn btn-outline-primary">
+                                        ➕ Registrar primer gasto
+                                    </a>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <!-- Top 3 gastos -->
+                            <div class="card border-danger">
+                                <div class="card-header bg-danger text-white">
+                                    <h6 class="mb-0">🔥 Top 3 Gastos</h6>
+                                </div>
+                                <div class="card-body">
+                                    {% for categoria in categorias_gastos|slice:":3" %}
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <div>
+                                                <span class="badge bg-secondary">{{ forloop.counter }}</span>
+                                                <strong>{{ categoria.categoria|title }}</strong>
+                                            </div>
+                                            <div class="text-end">
+                                                <div class="fw-bold text-danger">${{ categoria.total|floatformat:0 }}</div>
+                                                <small class="text-muted">{{ categoria.porcentaje|floatformat:1 }}%</small>
+                                            </div>
+                                        </div>
+                                        {% if not forloop.last %}<hr class="my-2">{% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
+                            <!-- Estadísticas adicionales -->
+                            <div class="card border-secondary mt-3">
+                                <div class="card-header">
+                                    <h6 class="mb-0">📊 Estadísticas</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row text-center">
+                                        <div class="col-6">
+                                            <h6 class="text-muted">Promedio</h6>
+                                            <h4>${{ promedio_categoria_gasto|floatformat:0 }}</h4>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="text-center">
+                                        <small class="text-muted">
+                                            Categoría más costosa:<br>
+                                            <strong>{{ categoria_mas_costosa.categoria|title }}</strong><br>
+                                            ${{ categoria_mas_costosa.total|floatformat:0|intcomma }}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Tab Ingresos -->
+                {% if tipo_filtro == 'ambos' or tipo_filtro == 'ingresos' %}
+                <div class="tab-pane fade {% if tipo_filtro == 'ingresos' %}show active{% endif %}" id="ingresos" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h5 class="text-success mb-3">💰 Distribución de Ingresos</h5>
+                            {% if categorias_ingresos %}
+                                {% for categoria in categorias_ingresos %}
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="fw-bold">
+                                            🏷️ {{ categoria.categoria|title }}
+                                        </span>
+                                        <div class="text-end">
+                                            <span class="fw-bold text-success">${{ categoria.total|floatformat:0|intcomma }}</span>
+                                            <small class="text-muted">({{ categoria.porcentaje|floatformat:1 }}%)</small>
+                                        </div>
+                                    </div>
+                                    <div class="progress mb-1" style="height: 20px;">
+                                        <div class="progress-bar bg-success" 
+                                             style="width: {{ categoria.porcentaje }}%"
+                                             title="{{ categoria.categoria }}: ${{ categoria.total|floatformat:0 }}">
+                                        </div>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-muted">
+                                            {{ categoria.cantidad }} movimiento{{ categoria.cantidad|pluralize }}
+                                        </small>
+                                        <small class="text-muted">
+                                            Promedio: ${{ categoria.promedio|floatformat:0|intcomma }}
+                                        </small>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center text-muted py-4">
+                                    <h6>No hay ingresos en el período seleccionado</h6>
+                                    <a href="{% url 'crear_movimiento' %}" class="btn btn-outline-success">
+                                        ➕ Registrar primer ingreso
+                                    </a>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <!-- Top 3 ingresos -->
+                            <div class="card border-success">
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0">🌟 Top 3 Ingresos</h6>
+                                </div>
+                                <div class="card-body">
+                                    {% for categoria in categorias_ingresos|slice:":3" %}
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <div>
+                                                <span class="badge bg-secondary">{{ forloop.counter }}</span>
+                                                <strong>{{ categoria.categoria|title }}</strong>
+                                            </div>
+                                            <div class="text-end">
+                                                <div class="fw-bold text-success">${{ categoria.total|floatformat:0 }}</div>
+                                                <small class="text-muted">{{ categoria.porcentaje|floatformat:1 }}%</small>
+                                            </div>
+                                        </div>
+                                        {% if not forloop.last %}<hr class="my-2">{% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
+                            <!-- Diversificación de ingresos -->
+                            <div class="card border-info mt-3">
+                                <div class="card-header bg-info text-white">
+                                    <h6 class="mb-0">📈 Diversificación</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="text-center mb-3">
+                                        <h4 class="text-info">{{ diversificacion_ingresos|floatformat:1 }}%</h4>
+                                        <small class="text-muted">Índice de diversificación</small>
+                                    </div>
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar bg-info" 
+                                             style="width: {{ diversificacion_ingresos }}%">
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">
+                                        {% if diversificacion_ingresos >= 70 %}
+                                            ✅ Excelente diversificación
+                                        {% elif diversificacion_ingresos >= 50 %}
+                                            ⚠️ Diversificación moderada
+                                        {% else %}
+                                            ❌ Baja diversificación
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Tab Comparación -->
+                {% if tipo_filtro == 'ambos' %}
+                <div class="tab-pane fade" id="comparacion" role="tabpanel">
+                    <h5 class="mb-4">📊 Comparación Ingresos vs Gastos por Categoría</h5>
+                    
+                    <!-- Tabla comparativa -->
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>🏷️ Categoría</th>
+                                    <th class="text-center">💰 Ingresos</th>
+                                    <th class="text-center">💸 Gastos</th>
+                                    <th class="text-center">⚖️ Balance</th>
+                                    <th class="text-center">📊 Movimientos</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cat in categorias_comparacion %}
+                                <tr>
+                                    <td><strong>{{ cat.categoria|title }}</strong></td>
+                                    <td class="text-center">
+                                        {% if cat.ingresos > 0 %}
+                                            <span class="text-success fw-bold">${{ cat.ingresos|floatformat:0|intcomma }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if cat.gastos > 0 %}
+                                            <span class="text-danger fw-bold">${{ cat.gastos|floatformat:0|intcomma }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="fw-bold {% if cat.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                            ${{ cat.balance|floatformat:0|intcomma }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-secondary">{{ cat.total_movimientos }}</span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-4">
+                                        No hay datos para comparar en el período seleccionado
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Gráfico de barras comparativo -->
+                    <div class="mt-4">
+                        <h6>📈 Visualización Comparativa</h6>
+                        <div class="chart-comparison" style="max-height: 400px; overflow-y: auto;">
+                            {% for cat in categorias_comparacion|slice:":10" %}
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <strong>{{ cat.categoria|title }}</strong>
+                                    <small class="text-muted">Balance: ${{ cat.balance|floatformat:0 }}</small>
+                                </div>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="progress" style="height: 25px;">
+                                            <div class="progress-bar bg-success" 
+                                                 style="width: {{ cat.porcentaje_ingresos }}%"
+                                                 title="Ingresos: ${{ cat.ingresos|floatformat:0 }}">
+                                                <small>${{ cat.ingresos|floatformat:0 }}</small>
+                                            </div>
+                                        </div>
+                                        <small class="text-success">💰 Ingresos</small>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="progress" style="height: 25px;">
+                                            <div class="progress-bar bg-danger" 
+                                                 style="width: {{ cat.porcentaje_gastos }}%"
+                                                 title="Gastos: ${{ cat.gastos|floatformat:0 }}">
+                                                <small>${{ cat.gastos|floatformat:0 }}</small>
+                                            </div>
+                                        </div>
+                                        <small class="text-danger">💸 Gastos</small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Insights y recomendaciones -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">💡 Insights</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        {% if categoria_mas_costosa %}
+                        <li class="mb-2">
+                            <strong>🔥 Mayor gasto:</strong> {{ categoria_mas_costosa.categoria|title }} 
+                            (${{ categoria_mas_costosa.total|floatformat:0|intcomma }})
+                        </li>
+                        {% endif %}
+                        
+                        {% if categoria_mas_ingresos %}
+                        <li class="mb-2">
+                            <strong>💰 Mayor ingreso:</strong> {{ categoria_mas_ingresos.categoria|title }} 
+                            (${{ categoria_mas_ingresos.total|floatformat:0|intcomma }})
+                        </li>
+                        {% endif %}
+                        
+                        {% if concentracion_gastos > 70 %}
+                        <li class="mb-2">
+                            <strong>⚠️ Alta concentración:</strong> {{ concentracion_gastos|floatformat:0 }}% de gastos en pocas categorías
+                        </li>
+                        {% endif %}
+                        
+                        {% if categorias_sin_actividad %}
+                        <li class="mb-2">
+                            <strong>📊 Oportunidad:</strong> {{ categorias_sin_actividad }} categorías sin actividad reciente
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">🎯 Recomendaciones</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        {% if concentracion_gastos > 80 %}
+                        <li class="mb-2">
+                            <span class="badge bg-warning me-2">💡</span>
+                            Considera diversificar gastos en más categorías
+                        </li>
+                        {% endif %}
+                        
+                        {% if diversificacion_ingresos < 50 %}
+                        <li class="mb-2">
+                            <span class="badge bg-success me-2">💰</span>
+                            Busca diversificar fuentes de ingresos
+                        </li>
+                        {% endif %}
+                        
+                        {% if balance < 0 %}
+                        <li class="mb-2">
+                            <span class="badge bg-danger me-2">⚠️</span>
+                            Revisa las categorías con mayor gasto
+                        </li>
+                        {% endif %}
+                        
+                        <li class="mb-2">
+                            <span class="badge bg-secondary me-2">📊</span>
+                            Establece presupuestos por categoría
+                        </li>
+                        
+                        <li class="mb-2">
+                            <span class="badge bg-primary me-2">📱</span>
+                            Mantén un registro consistente
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Acciones rápidas -->
+    <div class="text-center mt-4">
+        <div class="btn-group" role="group">
+            <a href="{% url 'crear_movimiento' %}" class="btn btn-success">
+                ➕ Nuevo Movimiento
+            </a>
+            <a href="{% url 'movimientos' %}" class="btn btn-primary">
+                📋 Ver Movimientos
+            </a>
+            <a href="{% url 'balance' %}" class="btn btn-outline-primary">
+                🏠 Ir al Balance
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript para funcionalidad -->
+<script>
+// Mostrar/ocultar campos de fecha personalizada
+document.querySelector('[name="periodo"]').addEventListener('change', function() {
+    const fechaDesde = document.getElementById('fechaDesde');
+    const fechaHasta = document.getElementById('fechaHasta');
+    
+    if (this.value === 'personalizado') {
+        fechaDesde.style.display = 'block';
+        fechaHasta.style.display = 'block';
+    } else {
+        fechaDesde.style.display = 'none';
+        fechaHasta.style.display = 'none';
+    }
+});
+
+// Activar tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
+    tooltipTriggerList.map(function(tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+// Animaciones para las barras de progreso
+document.addEventListener('DOMContentLoaded', function() {
+    const progressBars = document.querySelectorAll('.progress-bar');
+    progressBars.forEach((bar, index) => {
+        setTimeout(() => {
+            bar.style.opacity = '0';
+            bar.style.width = '0%';
+            setTimeout(() => {
+                bar.style.transition = 'all 1s ease-in-out';
+                bar.style.opacity = '1';
+                bar.style.width = bar.getAttribute('data-width') || bar.style.width;
+            }, 100);
+        }, index * 100);
+    });
+});
+
+// Función para filtros rápidos
+function aplicarFiltroRapido(tipo, valor) {
+    const form = document.querySelector('form');
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = tipo;
+    input.value = valor;
+    form.appendChild(input);
+    form.submit();
+}
+</script>
+
+<!-- CSS adicional -->
+<style>
+.progress-bar {
+    transition: width 0.8s ease-in-out;
+}
+
+.chart-comparison {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+}
+
+.nav-tabs .nav-link {
+    color: #495057;
+    font-weight: 500;
+}
+
+.nav-tabs .nav-link.active {
+    font-weight: 600;
+    color: #0d6efd;
+}
+
+.card-header {
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .btn-group {
+        flex-direction: column;
+    }
+    
+    .btn-group .btn {
+        border-radius: 0.375rem !important;
+        margin-bottom: 0.25rem;
+    }
+    
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+}
+</style>
+{% endblock %}d">Categorías</h6>
+                                            <h4>{{ categorias_gastos.count }}</h4>
+                                        </div>
+                                        <div class="col-6">
+                                            <h6 class="text-mute

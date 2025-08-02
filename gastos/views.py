@@ -9,9 +9,12 @@ from collections import defaultdict
 from django.utils.timezone import now
 from datetime import datetime
 from django.contrib import messages
-from django.template.loader import get_template
+from django.template.loader import get_template, render_to_string
 from django.http import HttpResponse
 from xhtml2pdf import pisa 
+from calendar import monthrange
+import tempfile
+from weasyprint import HTML
 
 @login_required
 def balance_view(request):
@@ -37,6 +40,7 @@ def crear_movimiento_view(request):
         if form.is_valid():
             movimiento = form.save(commit=False)
             movimiento.usuario = request.user
+            movimiento.creado_en = now()
             movimiento.save()
             return redirect('balance')
         
@@ -177,28 +181,45 @@ def exportar_movimientos_pdf(request):
 
 @login_required
 def exportar_pdf_mes(request, mes):
-    # Convertir mes a fecha para filtrar
     try:
+        # Parsear mes en formato YYYY-MM
         año, mes_num = map(int, mes.split('-'))
-        fecha_inicio = datetime.date(año, mes_num, 1)
-        if mes_num == 12:
-            fecha_fin = datetime.date(año + 1, 1, 1)
-        else:
-            fecha_fin = datetime.date(año, mes_num + 1, 1)
-    except:
-        return HttpResponse("Mes inválido", status=400)
+    except ValueError:
+        return HttpResponse("Formato de fecha inválido", status=400)
 
+    # Filtrar movimientos del mes y usuario
+    inicio_mes = datetime(año, mes_num, 1)
+    fin_mes = datetime(año, mes_num, monthrange(año, mes_num)[1])
+    
     movimientos = Movimiento.objects.filter(
         usuario=request.user,
-        fecha__gte=fecha_inicio,
-        fecha__lt=fecha_fin
+        fecha__range=(inicio_mes, fin_mes)
     ).order_by('fecha')
 
-    template = get_template('gastos/pdf_por_mes.html')
-    html = template.render({'movimientos': movimientos, 'mes_legible': mes})
-    
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="{mes}_movimientos.pdf"'
+    # Calcular resumen
+    ingresos = sum(m.monto for m in movimientos if m.tipo == 'ingreso')
+    gastos = sum(m.monto for m in movimientos if m.tipo == 'gasto')
+    balance = ingresos - gastos
 
-    pisa.CreatePDF(html, dest=response)
+    mes_legible = inicio_mes.strftime('%B %Y')
+
+    html_string = render_to_string("gastos/pdf_por_mes.html", {
+        "movimientos": movimientos,
+        "mes": mes_legible,
+        "resumen": {
+            "ingresos": ingresos,
+            "gastos": gastos,
+            "balance": balance
+        }
+    })
+
+    # Convertir HTML a PDF usando WeasyPrint y devolverlo como descarga
+    response = HttpResponse(content_type="application/pdf")
+    response['Content-Disposition'] = f'attachment; filename="movimientos_{mes}.pdf"'
+
+    with tempfile.NamedTemporaryFile(delete=True) as tmp_file:
+        HTML(string=html_string).write_pdf(tmp_file.name)
+        tmp_file.seek(0)
+        response.write(tmp_file.read())
+
     return response

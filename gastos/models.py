@@ -20,6 +20,7 @@ class Movimiento(models.Model):
     categoria = models.CharField(max_length=50, choices=CATEGORIAS_CHOICES, default='otros')
     fecha = models.DateField()
     creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
     comprobante = models.FileField(upload_to='comprobantes/', blank=True, null=True)
     nota = models.TextField(blank=True, null=True)
     

@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Dashboard - Gestor de Gastos{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <!-- Tarjetas de estadísticas principales -->
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="card-title">Balance Total</h3>
+                    <div class="h2 {% if balance >= 0 %}balance-positive{% else %}balance-negative{% endif %}">
+                        ${{ balance|floatformat:0|intcomma }}
+                    </div>
+                    <small class="text-muted">Todos los tiempos</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="card-title">Balance del Mes</h3>
+                    <div class="h2 {% if balance_mes >= 0 %}balance-positive{% else %}balance-negative{% endif %}">
+                        ${{ balance_mes|floatformat:0|intcomma }}
+                    </div>
+                    <small class="text-muted">Mes actual</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="card-title">Ingresos</h3>
+                    <div class="h2 balance-positive">${{ total_ingresos|floatformat:0|intcomma }}</div>
+                    <small class="text-muted">Total acumulado</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="card-title">Gastos</h3>
+                    <div class="h2 balance-negative">${{ total_gastos|floatformat:0|intcomma }}</div>
+                    <small class="text-muted">Total acumulado</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Top categorías de gastos -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">Top Categorías de Gastos</h5>
+                </div>
+                <div class="card-body">
+                    {% if top_categorias %}
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Categoría</th>
+                                        <th>Total</th>
+                                        <th>%</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for cat in top_categorias %}
+                                    <tr>
+                                        <td>{{ cat.categoria|title }}</td>
+                                        <td>${{ cat.total|floatformat:0|intcomma }}</td>
+                                        <td>{% widthratio cat.total total_gastos 100 %}%</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No hay gastos registrados aún.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Últimos movimientos -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title">Últimos Movimientos</h5>
+                    <a href="{% url 'movimientos' %}" class="btn btn-outline btn-sm">Ver todos</a>
+                </div>
+                <div class="card-body">
+                    {% if ultimos_movimientos %}
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Descripción</th>
+                                        <th>Monto</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for mov in ultimos_movimientos %}
+                                    <tr>
+                                        <td>{{ mov.fecha|date:"d/m/Y" }}</td>
+                                        <td>{{ mov.descripcion|truncatechars:20 }}</td>
+                                        <td class="{% if mov.tipo == 'ingreso' %}balance-positive{% else %}balance-negative{% endif %}">
+                                            {% if mov.tipo == 'gasto' %}-{% endif %}${{ mov.monto|floatformat:0|intcomma }}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No hay movimientos registrados.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas por mes -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">Estadísticas por Mes (Últimos 6 meses)</h5>
+                </div>
+                <div class="card-body">
+                    {% if meses_stats %}
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Mes</th>
+                                        <th>Ingresos</th>
+                                        <th>Gastos</th>
+                                        <th>Balance</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for mes in meses_stats %}
+                                    <tr>
+                                        <td>{{ mes.mes }}</td>
+                                        <td class="balance-positive">${{ mes.ingresos|floatformat:0|intcomma }}</td>
+                                        <td class="balance-negative">${{ mes.gastos|floatformat:0|intcomma }}</td>
+                                        <td class="{% if mes.balance >= 0 %}balance-positive{% else %}balance-negative{% endif %}">
+                                            ${{ mes.balance|floatformat:0|intcomma }}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No hay datos suficientes para mostrar estadísticas.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones rápidas -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">Acciones Rápidas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="{% url 'crear_movimiento' %}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Nuevo Movimiento
+                        </a>
+                        <a href="{% url 'movimientos' %}" class="btn btn-outline">
+                            <i class="fas fa-list"></i> Ver Movimientos
+                        </a>
+                        <a href="{% url 'resumen' %}" class="btn btn-outline">
+                            <i class="fas fa-chart-bar"></i> Resumen Mensual
+                        </a>
+                        <a href="{% url 'exportar_movimientos_pdf' %}" class="btn btn-outline">
+                            <i class="fas fa-download"></i> Exportar PDF
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-refresh cada 5 minutos
+setTimeout(function() {
+    location.reload();
+}, 300000);
+
+// Animaciones de entrada
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.3s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+</script>
+{% endblock %} 

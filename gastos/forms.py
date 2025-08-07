@@ -4,6 +4,7 @@ from django.utils import timezone
 from .models import Movimiento
 import re
 from decimal import Decimal, InvalidOperation
+from .models import Presupuesto, Movimiento
 
 class MovimientoForm(forms.ModelForm):
     class Meta:
@@ -265,3 +266,116 @@ class FiltroMovimientosForm(forms.Form):
             raise ValidationError('La fecha de inicio debe ser anterior a la fecha de fin.')
         
         return cleaned_data
+
+class PresupuestoForm(forms.ModelForm):
+    """
+    Formulario para crear y editar presupuestos
+    """
+    class Meta:
+        model = Presupuesto
+        fields = ['categoria', 'monto_presupuestado']
+        widgets = {
+            'categoria': forms.Select(attrs={
+                'class': 'form-control',
+                'required': True
+            }),
+            'monto_presupuestado': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0',
+                'step': '0.01',
+                'required': True,
+                'placeholder': '0.00'
+            })
+        }
+    
+    def __init__(self, *args, **kwargs):
+        self.usuario = kwargs.pop('usuario', None)
+        self.año = kwargs.pop('año', None)
+        self.mes = kwargs.pop('mes', None)
+        super().__init__(*args, **kwargs)
+        
+        # Filtrar categorías solo para gastos
+        self.fields['categoria'].choices = [
+            choice for choice in Movimiento.CATEGORIAS_CHOICES 
+            if choice[0] not in ['salario', 'bonificacion', 'inversion', 'otro_ingreso']
+        ]
+    
+    def clean_monto_presupuestado(self):
+        monto = self.cleaned_data.get('monto_presupuestado')
+        if monto is not None and monto <= 0:
+            raise ValidationError('El monto presupuestado debe ser mayor a 0.')
+        return monto
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        categoria = cleaned_data.get('categoria')
+        
+        if self.usuario and self.año and self.mes and categoria:
+            # Verificar si ya existe un presupuesto para esta categoría en este mes
+            presupuesto_existente = Presupuesto.objects.filter(
+                usuario=self.usuario,
+                año=self.año,
+                mes=self.mes,
+                categoria=categoria
+            ).exclude(pk=self.instance.pk if self.instance else None)
+            
+            if presupuesto_existente.exists():
+                raise ValidationError(
+                    f'Ya existe un presupuesto para la categoría "{dict(Movimiento.CATEGORIAS_CHOICES)[categoria]}" '
+                    f'en {self.mes}/{self.año}.'
+                )
+        
+        return cleaned_data
+
+class FiltroPresupuestosForm(forms.Form):
+    """
+    Formulario para filtrar presupuestos
+    """
+    año = forms.IntegerField(
+        required=False,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Año (ej: 2025)',
+            'min': '2020',
+            'max': '2030'
+        })
+    )
+    mes = forms.IntegerField(
+        required=False,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Mes (1-12)',
+            'min': '1',
+            'max': '12'
+        })
+    )
+    categoria = forms.ChoiceField(
+        choices=[('', 'Todas las categorías')] + [
+            choice for choice in Movimiento.CATEGORIAS_CHOICES 
+            if choice[0] not in ['salario', 'bonificacion', 'inversion', 'otro_ingreso']
+        ],
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    estado = forms.ChoiceField(
+        choices=[
+            ('', 'Todos los estados'),
+            ('normal', 'Normal'),
+            ('advertencia', 'Advertencia'),
+            ('excedido', 'Excedido')
+        ],
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    def clean_año(self):
+        año = self.cleaned_data.get('año')
+        if año is not None and (año < 2020 or año > 2030):
+            raise ValidationError('El año debe estar entre 2020 y 2030.')
+        return año
+    
+    def clean_mes(self):
+        mes = self.cleaned_data.get('mes')
+        if mes is not None and (mes < 1 or mes > 12):
+            raise ValidationError('El mes debe estar entre 1 y 12.')
+        return mes

@@ -1,0 +1,282 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Presupuestos - Gestor de Gastos{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="card-title">💰 Gestión de Presupuestos</h2>
+                    <a href="{% url 'crear_presupuesto' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nuevo Presupuesto
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumen de Presupuestos -->
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h4 class="card-title">Total Presupuestado</h4>
+                    <div class="h2 text-primary">${{ total_presupuestado|floatformat:0|intcomma }}</div>
+                    <small class="text-muted">Monto asignado</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h4 class="card-title">Total Gastado</h4>
+                    <div class="h2 balance-negative">${{ total_gastado|floatformat:0|intcomma }}</div>
+                    <small class="text-muted">Monto utilizado</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h4 class="card-title">Restante</h4>
+                    <div class="h2 {% if total_presupuestado >= total_gastado %}balance-positive{% else %}balance-negative{% endif %}">
+                        ${{ total_presupuestado|add:total_gastado|floatformat:0|intcomma }}
+                    </div>
+                    <small class="text-muted">Disponible</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h4 class="card-title">Excedidos</h4>
+                    <div class="h2 text-danger">{{ presupuestos_excedidos }}</div>
+                    <small class="text-muted">Presupuestos</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">🔍 Filtros de Búsqueda</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-2">
+                            {{ filtro_form.año.label_tag }}
+                            {{ filtro_form.año }}
+                        </div>
+                        <div class="col-md-2">
+                            {{ filtro_form.mes.label_tag }}
+                            {{ filtro_form.mes }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ filtro_form.categoria.label_tag }}
+                            {{ filtro_form.categoria }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ filtro_form.estado.label_tag }}
+                            {{ filtro_form.estado }}
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary me-2">Filtrar</button>
+                            <a href="{% url 'presupuestos' %}" class="btn btn-outline">Limpiar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Presupuestos -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">📋 Presupuestos ({{ total_presupuestos }})</h5>
+                </div>
+                <div class="card-body">
+                    {% if presupuestos %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Período</th>
+                                        <th>Categoría</th>
+                                        <th>Presupuestado</th>
+                                        <th>Gastado</th>
+                                        <th>Restante</th>
+                                        <th>Progreso</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for presupuesto in presupuestos %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ presupuesto.mes }}/{{ presupuesto.año }}</strong>
+                                        </td>
+                                        <td>{{ presupuesto.get_categoria_display }}</td>
+                                        <td class="text-primary">${{ presupuesto.monto_presupuestado|floatformat:0|intcomma }}</td>
+                                        <td class="balance-negative">${{ presupuesto.monto_gastado|floatformat:0|intcomma }}</td>
+                                        <td class="{% if presupuesto.monto_restante >= 0 %}balance-positive{% else %}balance-negative{% endif %}">
+                                            ${{ presupuesto.monto_restante|floatformat:0|intcomma }}
+                                        </td>
+                                        <td>
+                                            <div class="progress" style="height: 20px;">
+                                                {% if presupuesto.porcentaje_usado > 100 %}
+                                                    <div class="progress-bar bg-danger" style="width: 100%">
+                                                        100%+
+                                                    </div>
+                                                {% else %}
+                                                    <div class="progress-bar 
+                                                        {% if presupuesto.estado == 'excedido' %}bg-danger
+                                                        {% elif presupuesto.estado == 'advertencia' %}bg-warning
+                                                        {% else %}bg-success{% endif %}" 
+                                                        style="width: {{ presupuesto.porcentaje_usado }}%">
+                                                        {{ presupuesto.porcentaje_usado|floatformat:1 }}%
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if presupuesto.estado == 'excedido' %}
+                                                <span class="badge bg-danger">Excedido</span>
+                                            {% elif presupuesto.estado == 'advertencia' %}
+                                                <span class="badge bg-warning">Advertencia</span>
+                                            {% else %}
+                                                <span class="badge bg-success">Normal</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{% url 'editar_presupuesto' presupuesto.id %}" 
+                                                   class="btn btn-sm btn-outline-primary" 
+                                                   title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <form method="post" action="{% url 'eliminar_presupuesto' presupuesto.id %}" 
+                                                      style="display: inline;" 
+                                                      onsubmit="return confirm('¿Estás seguro de que quieres eliminar este presupuesto?')">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Paginación -->
+                        {% if presupuestos.has_other_pages %}
+                        <nav aria-label="Paginación de presupuestos">
+                            <ul class="pagination justify-content-center">
+                                {% if presupuestos.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ presupuestos.previous_page_number }}&{{ request.GET.urlencode }}">Anterior</a>
+                                    </li>
+                                {% endif %}
+
+                                {% for num in presupuestos.paginator.page_range %}
+                                    {% if presupuestos.number == num %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ num }}</span>
+                                        </li>
+                                    {% elif num > presupuestos.number|add:'-3' and num < presupuestos.number|add:'3' %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}&{{ request.GET.urlencode }}">{{ num }}</a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if presupuestos.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ presupuestos.next_page_number }}&{{ request.GET.urlencode }}">Siguiente</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <div style="font-size: 4rem;">💰</div>
+                            <h4>No hay presupuestos registrados</h4>
+                            <p class="text-muted">Crea tu primer presupuesto para empezar a controlar tus gastos.</p>
+                            <a href="{% url 'crear_presupuesto' %}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Crear Primer Presupuesto
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones Rápidas -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">⚡ Acciones Rápidas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="{% url 'crear_presupuesto' %}?año={{ current_year }}&mes={{ current_month }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Presupuesto Este Mes
+                        </a>
+                        <a href="{% url 'dashboard' %}" class="btn btn-outline">
+                            <i class="fas fa-chart-line"></i> Dashboard
+                        </a>
+                        <a href="{% url 'estadisticas' %}" class="btn btn-outline">
+                            <i class="fas fa-chart-bar"></i> Estadísticas
+                        </a>
+                        <a href="{% url 'notificaciones' %}" class="btn btn-outline">
+                            <i class="fas fa-bell"></i> Notificaciones
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-refresh cada 5 minutos
+setTimeout(function() {
+    location.reload();
+}, 300000);
+
+// Animaciones de entrada
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.3s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+
+// Tooltips para las barras de progreso
+document.querySelectorAll('.progress-bar').forEach(bar => {
+    bar.addEventListener('mouseover', function() {
+        this.style.cursor = 'pointer';
+    });
+});
+</script>
+{% endblock %} 

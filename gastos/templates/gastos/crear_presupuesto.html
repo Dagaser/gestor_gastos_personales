@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}{{ titulo }} - Gestor de Gastos{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">{{ titulo }} - {{ mes_nombre }}</h2>
+                    <p class="text-muted">Establece un límite de gastos para una categoría específica</p>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <!-- Categoría -->
+                        <div class="mb-3">
+                            <label for="{{ form.categoria.id_for_label }}" class="form-label">
+                                <strong>Categoría *</strong>
+                            </label>
+                            {{ form.categoria }}
+                            {% if form.categoria.errors %}
+                                <div class="alert alert-danger mt-1">
+                                    {% for error in form.categoria.errors %}
+                                        <small>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Selecciona la categoría de gastos para la cual quieres establecer un presupuesto.
+                            </small>
+                        </div>
+
+                        <!-- Monto Presupuestado -->
+                        <div class="mb-3">
+                            <label for="{{ form.monto_presupuestado.id_for_label }}" class="form-label">
+                                <strong>Monto Presupuestado *</strong>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                {{ form.monto_presupuestado }}
+                            </div>
+                            {% if form.monto_presupuestado.errors %}
+                                <div class="alert alert-danger mt-1">
+                                    {% for error in form.monto_presupuestado.errors %}
+                                        <small>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Establece el límite máximo que quieres gastar en esta categoría durante {{ mes_nombre }}.
+                            </small>
+                        </div>
+
+                        <!-- Información del Período -->
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle"></i> Información del Presupuesto</h6>
+                            <ul class="mb-0">
+                                <li><strong>Período:</strong> {{ mes_nombre }}</li>
+                                <li><strong>Usuario:</strong> {{ user.username|capfirst }}</li>
+                                <li><strong>Estado inicial:</strong> Normal (0% usado)</li>
+                            </ul>
+                        </div>
+
+                        <!-- Errores generales del formulario -->
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {% for error in form.non_field_errors %}
+                                    <small>{{ error }}</small><br>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        <!-- Botones -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Presupuesto
+                            </button>
+                            <a href="{% url 'presupuestos' %}" class="btn btn-outline">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Consejos -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="card-title">💡 Consejos para Presupuestos</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>📊 Cómo Funciona</h6>
+                            <ul class="small">
+                                <li>El sistema rastrea automáticamente tus gastos en cada categoría</li>
+                                <li>Recibirás alertas cuando alcances el 80% del presupuesto</li>
+                                <li>Se marcará como "excedido" cuando superes el 100%</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>🎯 Mejores Prácticas</h6>
+                            <ul class="small">
+                                <li>Establece presupuestos realistas basados en gastos históricos</li>
+                                <li>Revisa y ajusta mensualmente según tus necesidades</li>
+                                <li>Prioriza categorías con mayor impacto en tus finanzas</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acciones Rápidas -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="card-title">⚡ Acciones Rápidas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="{% url 'presupuestos' %}" class="btn btn-outline">
+                            <i class="fas fa-list"></i> Ver Todos los Presupuestos
+                        </a>
+                        <a href="{% url 'dashboard' %}" class="btn btn-outline">
+                            <i class="fas fa-chart-line"></i> Dashboard
+                        </a>
+                        <a href="{% url 'estadisticas' %}" class="btn btn-outline">
+                            <i class="fas fa-chart-bar"></i> Estadísticas
+                        </a>
+                        <a href="{% url 'crear_movimiento' %}" class="btn btn-outline">
+                            <i class="fas fa-plus"></i> Nuevo Movimiento
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Formatear monto mientras se escribe
+document.getElementById('{{ form.monto_presupuestado.id_for_label }}').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/[^\d.]/g, '');
+    
+    // Permitir solo un punto decimal
+    const parts = value.split('.');
+    if (parts.length > 2) {
+        value = parts[0] + '.' + parts.slice(1).join('');
+    }
+    
+    // Limitar a 2 decimales
+    if (parts.length === 2 && parts[1].length > 2) {
+        value = parts[0] + '.' + parts[1].substring(0, 2);
+    }
+    
+    e.target.value = value;
+});
+
+// Validación en tiempo real
+document.querySelector('form').addEventListener('submit', function(e) {
+    const monto = document.getElementById('{{ form.monto_presupuestado.id_for_label }}').value;
+    const categoria = document.getElementById('{{ form.categoria.id_for_label }}').value;
+    
+    if (!categoria) {
+        e.preventDefault();
+        alert('Por favor selecciona una categoría.');
+        return false;
+    }
+    
+    if (!monto || parseFloat(monto) <= 0) {
+        e.preventDefault();
+        alert('Por favor ingresa un monto válido mayor a 0.');
+        return false;
+    }
+});
+
+// Animaciones de entrada
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.3s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+</script>
+{% endblock %} 

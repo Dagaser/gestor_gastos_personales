@@ -16,6 +16,10 @@
     
     <title>{% block title %}Gestor de Gastos{% endblock %}</title>
     
+    {% load static %}
+    <link href="{% static 'css/style.css' %}" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
         /* Estilos básicos seguros */
         body { 
@@ -92,10 +96,14 @@
         <!-- Navegación segura -->
         {% if user.is_authenticated %}
         <nav class="nav">
+            <a href="{% url 'dashboard' %}">Dashboard</a>
             <a href="{% url 'balance' %}">Balance</a>
             <a href="{% url 'crear_movimiento' %}">Nuevo Movimiento</a>
             <a href="{% url 'movimientos' %}">Movimientos</a>
             <a href="{% url 'resumen' %}">Resumen</a>
+            <a href="{% url 'estadisticas' %}">Estadísticas</a>
+            <a href="{% url 'notificaciones' %}">Notificaciones</a>
+            <a href="{% url 'presupuestos' %}">Presupuestos</a>
             <span style="float: right;">
                 Hola, {{ user.username|capfirst }} | 
                 <a href="{% url 'admin:logout' %}">Cerrar Sesión</a>

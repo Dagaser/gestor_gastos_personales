@@ -1,0 +1,268 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Editar Movimiento - Gestor de Gastos{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">{{ titulo }}</h2>
+                    <p class="text-muted">Editando movimiento del {{ movimiento.fecha|date:"d/m/Y" }}</p>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" id="movimientoForm">
+                        {% csrf_token %}
+                        
+                        <!-- Errores generales del formulario -->
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="row">
+                            <!-- Tipo de Movimiento -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.tipo.id_for_label }}" class="form-label">
+                                        Tipo de Movimiento *
+                                    </label>
+                                    {{ form.tipo }}
+                                    {% if form.tipo.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {% for error in form.tipo.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <!-- Monto -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.monto.id_for_label }}" class="form-label">
+                                        Monto *
+                                    </label>
+                                    {{ form.monto }}
+                                    {% if form.monto.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {% for error in form.monto.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <!-- Categoría -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.categoria.id_for_label }}" class="form-label">
+                                        Categoría *
+                                    </label>
+                                    {{ form.categoria }}
+                                    {% if form.categoria.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {% for error in form.categoria.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <!-- Fecha -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.fecha.id_for_label }}" class="form-label">
+                                        Fecha *
+                                    </label>
+                                    {{ form.fecha }}
+                                    {% if form.fecha.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {% for error in form.fecha.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Descripción -->
+                        <div class="form-group">
+                            <label for="{{ form.descripcion.id_for_label }}" class="form-label">
+                                Descripción
+                            </label>
+                            {{ form.descripcion }}
+                            <small class="form-text text-muted">
+                                <span id="descripcion-count">0</span>/50 caracteres
+                            </small>
+                            {% if form.descripcion.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.descripcion.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Comprobante -->
+                        <div class="form-group">
+                            <label for="{{ form.comprobante.id_for_label }}" class="form-label">
+                                Comprobante
+                            </label>
+                            {% if movimiento.comprobante %}
+                                <div class="mb-2">
+                                    <strong>Comprobante actual:</strong>
+                                    <a href="{{ movimiento.comprobante.url }}" target="_blank">
+                                        {{ movimiento.comprobante.name|slice:"13:" }}
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {{ form.comprobante }}
+                            {% if form.comprobante.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.comprobante.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Nota -->
+                        <div class="form-group">
+                            <label for="{{ form.nota.id_for_label }}" class="form-label">
+                                Nota
+                            </label>
+                            {{ form.nota }}
+                            <small class="form-text text-muted">
+                                <span id="nota-count">0</span>/150 caracteres
+                            </small>
+                            {% if form.nota.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.nota.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Botones -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'movimientos' %}" class="btn btn-outline">
+                                <i class="fas fa-arrow-left"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary" id="submitBtn">
+                                <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                                <i class="fas fa-save"></i> Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('movimientoForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const spinner = submitBtn.querySelector('.spinner-border');
+    
+    // Contador de caracteres para descripción
+    const descripcionField = document.getElementById('{{ form.descripcion.id_for_label }}');
+    const descripcionCount = document.getElementById('descripcion-count');
+    
+    if (descripcionField) {
+        descripcionCount.textContent = descripcionField.value.length;
+        descripcionField.addEventListener('input', function() {
+            descripcionCount.textContent = this.value.length;
+        });
+    }
+    
+    // Contador de caracteres para nota
+    const notaField = document.getElementById('{{ form.nota.id_for_label }}');
+    const notaCount = document.getElementById('nota-count');
+    
+    if (notaField) {
+        notaCount.textContent = notaField.value.length;
+        notaField.addEventListener('input', function() {
+            notaCount.textContent = this.value.length;
+        });
+    }
+    
+    // Filtro de categorías según tipo
+    const tipoField = document.getElementById('{{ form.tipo.id_for_label }}');
+    const categoriaField = document.getElementById('{{ form.categoria.id_for_label }}');
+    
+    function filterCategories() {
+        const selectedType = tipoField.value;
+        const currentCategory = categoriaField.value;
+        
+        // Ocultar todas las opciones
+        Array.from(categoriaField.options).forEach(option => {
+            option.style.display = 'none';
+        });
+        
+        // Mostrar solo las categorías apropiadas
+        if (selectedType === 'ingreso') {
+            Array.from(categoriaField.options).forEach(option => {
+                if (option.value === 'salario' || option.value === 'otros' || option.value === '') {
+                    option.style.display = '';
+                }
+            });
+        } else if (selectedType === 'gasto') {
+            Array.from(categoriaField.options).forEach(option => {
+                if (option.value !== 'salario' || option.value === '') {
+                    option.style.display = '';
+                }
+            });
+        }
+        
+        // Si la categoría actual no es válida para el tipo, resetear
+        const validOptions = Array.from(categoriaField.options).filter(option => 
+            option.style.display !== 'none'
+        );
+        const isValidCategory = validOptions.some(option => option.value === currentCategory);
+        
+        if (!isValidCategory && currentCategory !== '') {
+            categoriaField.value = '';
+        }
+    }
+    
+    if (tipoField && categoriaField) {
+        tipoField.addEventListener('change', filterCategories);
+        filterCategories(); // Aplicar filtro inicial
+    }
+    
+    // Mostrar loading en envío
+    form.addEventListener('submit', function() {
+        submitBtn.disabled = true;
+        spinner.classList.remove('d-none');
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Guardando...';
+    });
+    
+    // Validación de campos requeridos
+    const requiredFields = form.querySelectorAll('[required]');
+    requiredFields.forEach(field => {
+        field.addEventListener('blur', function() {
+            if (!this.value.trim()) {
+                this.classList.add('is-invalid');
+            } else {
+                this.classList.remove('is-invalid');
+            }
+        });
+    });
+});
+</script>
+{% endblock %} 

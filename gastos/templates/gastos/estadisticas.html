@@ -1,0 +1,345 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Estadísticas - Gestor de Gastos{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">📊 Estadísticas Avanzadas - {{ año_actual }}</h2>
+                    <p class="text-muted">Análisis detallado de tus finanzas personales</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumen General -->
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h4 class="card-title">Total Movimientos</h4>
+                    <div class="h2 text-primary">{{ total_movimientos }}</div>
+                    <small class="text-muted">En toda la historia</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h4 class="card-title">Total Gastos</h4>
+                    <div class="h2 balance-negative">${{ total_gastos|floatformat:0|intcomma }}</div>
+                    <small class="text-muted">Acumulado total</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h4 class="card-title">Promedio Diario</h4>
+                    <div class="h2 balance-negative">${{ promedio_diario|floatformat:0|intcomma }}</div>
+                    <small class="text-muted">Gastos por día</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h4 class="card-title">Días con Gastos</h4>
+                    <div class="h2 text-info">{{ dias_con_gastos }}</div>
+                    <small class="text-muted">Días registrados</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos de Gastos e Ingresos por Mes -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">📈 Gastos por Mes - {{ año_actual }}</h5>
+                </div>
+                <div class="card-body">
+                    {% if gastos_por_mes %}
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Mes</th>
+                                        <th>Total</th>
+                                        <th>Barra</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for mes in gastos_por_mes %}
+                                    <tr>
+                                        <td>{{ mes.nombre_mes }}</td>
+                                        <td>${{ mes.total|floatformat:0|intcomma }}</td>
+                                        <td>
+                                            <div class="progress" style="height: 20px;">
+                                                {% if total_gastos > 0 %}
+                                                    {% widthratio mes.total total_gastos 100 as porcentaje %}
+                                                {% else %}
+                                                    {% widthratio mes.total 1 0 as porcentaje %}
+                                                {% endif %}
+                                                <div class="progress-bar bg-danger" 
+                                                     style="width: {{ porcentaje }}%"
+                                                     title="{{ mes.total|floatformat:0|intcomma }}">
+                                                    {% if porcentaje > 10 %}{{ porcentaje }}%{% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No hay gastos registrados este año.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">📈 Ingresos por Mes - {{ año_actual }}</h5>
+                </div>
+                <div class="card-body">
+                    {% if ingresos_por_mes %}
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Mes</th>
+                                        <th>Total</th>
+                                        <th>Barra</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for mes in ingresos_por_mes %}
+                                    <tr>
+                                        <td>{{ mes.nombre_mes }}</td>
+                                        <td>${{ mes.total|floatformat:0|intcomma }}</td>
+                                        <td>
+                                            <div class="progress" style="height: 20px;">
+                                                {% if total_ingresos > 0 %}
+                                                    {% widthratio mes.total total_ingresos 100 as porcentaje %}
+                                                {% else %}
+                                                    {% widthratio mes.total 1 0 as porcentaje %}
+                                                {% endif %}
+                                                <div class="progress-bar bg-success" 
+                                                     style="width: {{ porcentaje }}%"
+                                                     title="{{ mes.total|floatformat:0|intcomma }}">
+                                                    {% if porcentaje > 10 %}{{ porcentaje }}%{% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No hay ingresos registrados este año.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Categorías y Movimientos Grandes -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">🏆 Top 5 Categorías de Gastos</h5>
+                </div>
+                <div class="card-body">
+                    {% if top_categorias_gastos %}
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Categoría</th>
+                                        <th>Total</th>
+                                        <th>%</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for cat in top_categorias_gastos %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ cat.categoria|title }}</td>
+                                        <td>${{ cat.total|floatformat:0|intcomma }}</td>
+                                        <td>
+                                            {% if total_gastos > 0 %}
+                                                {% widthratio cat.total total_gastos 100 %}%
+                                            {% else %}
+                                                0%
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No hay gastos registrados aún.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">💰 Movimientos Más Grandes</h5>
+                </div>
+                <div class="card-body">
+                    {% if movimientos_grandes %}
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Descripción</th>
+                                        <th>Monto</th>
+                                        <th>Fecha</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for mov in movimientos_grandes %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ mov.descripcion|truncatechars:20 }}</td>
+                                        <td class="{% if mov.tipo == 'ingreso' %}balance-positive{% else %}balance-negative{% endif %}">
+                                            {% if mov.tipo == 'gasto' %}-{% endif %}${{ mov.monto|floatformat:0|intcomma }}
+                                        </td>
+                                        <td>{{ mov.fecha|date:"d/m/Y" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No hay movimientos registrados.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tendencia de Ahorro -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">📊 Tendencia de Ahorro (Últimos 6 Meses)</h5>
+                </div>
+                <div class="card-body">
+                    {% if tendencia_ahorro %}
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Mes</th>
+                                        <th>Ingresos</th>
+                                        <th>Gastos</th>
+                                        <th>Ahorro</th>
+                                        <th>% Ahorro</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for mes in tendencia_ahorro %}
+                                    <tr>
+                                        <td>{{ mes.mes }}</td>
+                                        <td class="balance-positive">${{ mes.ingresos|floatformat:0|intcomma }}</td>
+                                        <td class="balance-negative">${{ mes.gastos|floatformat:0|intcomma }}</td>
+                                        <td class="{% if mes.ahorro >= 0 %}balance-positive{% else %}balance-negative{% endif %}">
+                                            ${{ mes.ahorro|floatformat:0|intcomma }}
+                                        </td>
+                                        <td>{{ mes.porcentaje_ahorro|floatformat:1 }}%</td>
+                                        <td>
+                                            {% if mes.ahorro >= 0 %}
+                                                <span class="badge bg-success">✅ Ahorro</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">❌ Déficit</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No hay datos suficientes para mostrar tendencias.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">🚀 Acciones Rápidas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="{% url 'dashboard' %}" class="btn btn-outline">
+                            <i class="fas fa-chart-line"></i> Dashboard
+                        </a>
+                        <a href="{% url 'crear_movimiento' %}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Nuevo Movimiento
+                        </a>
+                        <a href="{% url 'exportar_movimientos_pdf' %}" class="btn btn-outline">
+                            <i class="fas fa-download"></i> Exportar PDF
+                        </a>
+                        <a href="{% url 'resumen' %}" class="btn btn-outline">
+                            <i class="fas fa-calendar"></i> Resumen Mensual
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-refresh cada 10 minutos
+setTimeout(function() {
+    location.reload();
+}, 600000);
+
+// Animaciones de entrada
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.3s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+
+// Tooltips para las barras de progreso
+document.querySelectorAll('.progress-bar').forEach(bar => {
+    bar.addEventListener('mouseover', function() {
+        this.style.cursor = 'pointer';
+    });
+});
+</script>
+{% endblock %} 

@@ -10,6 +10,9 @@ Pillow>=8.0.0
 # Para export PDF (ya lo tenías funcionando)
 xhtml2pdf>=0.2.5
 
+# Para export Excel (nueva funcionalidad)
+openpyxl>=3.0.0
+
 # Para variables de entorno (si estás usando)
 python-decouple>=3.6
 

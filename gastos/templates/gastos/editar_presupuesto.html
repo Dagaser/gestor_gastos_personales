@@ -1,0 +1,243 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}{{ titulo }} - Gestor de Gastos{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">{{ titulo }}</h2>
+                    <p class="text-muted">Modifica los detalles de tu presupuesto</p>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <!-- Categoría -->
+                        <div class="mb-3">
+                            <label for="{{ form.categoria.id_for_label }}" class="form-label">
+                                <strong>Categoría *</strong>
+                            </label>
+                            {{ form.categoria }}
+                            {% if form.categoria.errors %}
+                                <div class="alert alert-danger mt-1">
+                                    {% for error in form.categoria.errors %}
+                                        <small>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Categoría de gastos para este presupuesto.
+                            </small>
+                        </div>
+
+                        <!-- Monto Presupuestado -->
+                        <div class="mb-3">
+                            <label for="{{ form.monto_presupuestado.id_for_label }}" class="form-label">
+                                <strong>Monto Presupuestado *</strong>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                {{ form.monto_presupuestado }}
+                            </div>
+                            {% if form.monto_presupuestado.errors %}
+                                <div class="alert alert-danger mt-1">
+                                    {% for error in form.monto_presupuestado.errors %}
+                                        <small>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Límite máximo para esta categoría.
+                            </small>
+                        </div>
+
+                        <!-- Estado Actual del Presupuesto -->
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle"></i> Estado Actual del Presupuesto</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Período:</strong> {{ presupuesto.mes }}/{{ presupuesto.año }}<br>
+                                    <strong>Categoría:</strong> {{ presupuesto.get_categoria_display }}<br>
+                                    <strong>Monto Gastado:</strong> ${{ presupuesto.monto_gastado|floatformat:0|intcomma }}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Progreso:</strong> {{ presupuesto.porcentaje_usado|floatformat:1 }}%<br>
+                                    <strong>Restante:</strong> ${{ presupuesto.monto_restante|floatformat:0|intcomma }}<br>
+                                    <strong>Estado:</strong> 
+                                    {% if presupuesto.estado == 'excedido' %}
+                                        <span class="badge bg-danger">Excedido</span>
+                                    {% elif presupuesto.estado == 'advertencia' %}
+                                        <span class="badge bg-warning">Advertencia</span>
+                                    {% else %}
+                                        <span class="badge bg-success">Normal</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Barra de Progreso -->
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Progreso Actual</strong></label>
+                            <div class="progress" style="height: 25px;">
+                                {% if presupuesto.porcentaje_usado > 100 %}
+                                    <div class="progress-bar bg-danger" style="width: 100%">
+                                        100%+ (Excedido)
+                                    </div>
+                                {% else %}
+                                    <div class="progress-bar 
+                                        {% if presupuesto.estado == 'excedido' %}bg-danger
+                                        {% elif presupuesto.estado == 'advertencia' %}bg-warning
+                                        {% else %}bg-success{% endif %}" 
+                                        style="width: {{ presupuesto.porcentaje_usado }}%">
+                                        {{ presupuesto.porcentaje_usado|floatformat:1 }}%
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <small class="form-text text-muted">
+                                Progreso basado en gastos reales registrados.
+                            </small>
+                        </div>
+
+                        <!-- Errores generales del formulario -->
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {% for error in form.non_field_errors %}
+                                    <small>{{ error }}</small><br>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        <!-- Botones -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Actualizar Presupuesto
+                            </button>
+                            <a href="{% url 'presupuestos' %}" class="btn btn-outline">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Información Adicional -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="card-title">📊 Información del Presupuesto</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>📅 Detalles del Período</h6>
+                            <ul class="small">
+                                <li><strong>Año:</strong> {{ presupuesto.año }}</li>
+                                <li><strong>Mes:</strong> {{ presupuesto.mes }}</li>
+                                <li><strong>Creado:</strong> {{ presupuesto.creado_en|date:"d/m/Y H:i" }}</li>
+                                <li><strong>Última actualización:</strong> {{ presupuesto.actualizado_en|date:"d/m/Y H:i" }}</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>💰 Análisis Financiero</h6>
+                            <ul class="small">
+                                <li><strong>Eficiencia:</strong> 
+                                    {% if presupuesto.porcentaje_usado <= 100 %}
+                                        {{ 100|add:presupuesto.porcentaje_usado|floatformat:1 }}%
+                                    {% else %}
+                                        {{ presupuesto.porcentaje_usado|floatformat:1 }}% (Excedido)
+                                    {% endif %}
+                                </li>
+                                <li><strong>Margen de seguridad:</strong> 
+                                    {% if presupuesto.monto_restante > 0 %}
+                                        ${{ presupuesto.monto_restante|floatformat:0|intcomma }}
+                                    {% else %}
+                                        $0 (Sin margen)
+                                    {% endif %}
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acciones Rápidas -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="card-title">⚡ Acciones Rápidas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="{% url 'presupuestos' %}" class="btn btn-outline">
+                            <i class="fas fa-list"></i> Ver Todos los Presupuestos
+                        </a>
+                        <a href="{% url 'crear_presupuesto' %}" class="btn btn-outline">
+                            <i class="fas fa-plus"></i> Nuevo Presupuesto
+                        </a>
+                        <a href="{% url 'dashboard' %}" class="btn btn-outline">
+                            <i class="fas fa-chart-line"></i> Dashboard
+                        </a>
+                        <a href="{% url 'estadisticas' %}" class="btn btn-outline">
+                            <i class="fas fa-chart-bar"></i> Estadísticas
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Formatear monto mientras se escribe
+document.getElementById('{{ form.monto_presupuestado.id_for_label }}').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/[^\d.]/g, '');
+    
+    // Permitir solo un punto decimal
+    const parts = value.split('.');
+    if (parts.length > 2) {
+        value = parts[0] + '.' + parts.slice(1).join('');
+    }
+    
+    // Limitar a 2 decimales
+    if (parts.length === 2 && parts[1].length > 2) {
+        value = parts[0] + '.' + parts[1].substring(0, 2);
+    }
+    
+    e.target.value = value;
+});
+
+// Validación en tiempo real
+document.querySelector('form').addEventListener('submit', function(e) {
+    const monto = document.getElementById('{{ form.monto_presupuestado.id_for_label }}').value;
+    const categoria = document.getElementById('{{ form.categoria.id_for_label }}').value;
+    
+    if (!categoria) {
+        e.preventDefault();
+        alert('Por favor selecciona una categoría.');
+        return false;
+    }
+    
+    if (!monto || parseFloat(monto) <= 0) {
+        e.preventDefault();
+        alert('Por favor ingresa un monto válido mayor a 0.');
+        return false;
+    }
+});
+
+// Animaciones de entrada
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.3s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+</script>
+{% endblock %} 

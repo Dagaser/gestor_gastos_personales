@@ -31,6 +31,7 @@
     <button type="submit">Aplicar filtros</button>
     <a href="{% url 'movimientos' %}"><button type="button">Limpiar filtros</button></a>
     <a href="{% url 'exportar_movimientos_pdf' %}" class="btn btn-primary">Exportar a PDF</a>
+    <a href="{% url 'exportar_movimientos_excel' %}" class="btn btn-success">Exportar a Excel</a>
   </form>
 
   <table border="1" cellspacing="0" cellpadding="8">
@@ -78,12 +79,15 @@
             {% endif %}
           </td>
           <td>
+            <a href="{% url 'editar_movimiento' movimiento.id %}" 
+               style="color: white; background-color: #007bff; padding: 4px 8px; text-decoration: none; border-radius: 4px; margin-right: 5px;">
+               Editar
+            </a>
             <a href="{% url 'eliminar_movimiento' movimiento.id %}" 
                onclick="return confirm('¿Seguro que quieres eliminar este movimiento?');"
                style="color: white; background-color: red; padding: 4px 8px; text-decoration: none; border-radius: 4px;">
                Eliminar
             </a>
-
           </td>          
                
         </tr>

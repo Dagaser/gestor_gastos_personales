@@ -17,17 +17,17 @@ def validar_archivo_comprobante(archivo):
     tamaño_maximo = 5 * 1024 * 1024 # 5MB en bytes
 
     # Verificar extensión
-    estension = os.path.splitext(archivo.name)[1].lower()
+    extension = os.path.splitext(archivo.name)[1].lower()
     if extension not in extensiones_permitidas:
         raise ValidationError(
             f'Tipo de archivo no permitido. Extensiones válidas: {", ".join(extensiones_permitidas)}'
         )
     
-    # Verificar tamaño
-    if archivo.size > tamaño_maximo:
-        raise ValidationError(
-            f'El atchivo es muy grande. Tamaño máximo permitido: 5MB'
-        )
+            # Verificar tamaño
+        if archivo.size > tamaño_maximo:
+            raise ValidationError(
+                f'El archivo es muy grande. Tamaño máximo permitido: 5MB'
+            )
     
 class Movimiento(models.Model):
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -71,7 +71,7 @@ class Movimiento(models.Model):
         upload_to='comprobantes/', 
         blank=True, 
         null=True,
-       #validators=[validar_archivo_comprobante],
+        validators=[validar_archivo_comprobante],
         help_text="Archivo de comprobante (JPG, PNG, PDF, DOC - máx. 5MB)"
     )
     nota = models.TextField(
@@ -94,7 +94,7 @@ class Movimiento(models.Model):
     def clean(self):
         """
         Validaciones personalizadas que se ejecutan antes de guardar.
-        Django llana automáticamente a este método.
+        Django llama automáticamente a este método.
         """    
         errors = {}
 
@@ -156,3 +156,62 @@ class Movimiento(models.Model):
     def tiene_comprobante(self):
         """Retorna True si tiene comprobante adjunto"""
         return bool(self.comprobante)
+
+class Presupuesto(models.Model):
+    """
+    Modelo para presupuestos mensuales por categoría
+    """
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE)
+    año = models.IntegerField()
+    mes = models.IntegerField()
+    categoria = models.CharField(max_length=50, choices=Movimiento.CATEGORIAS_CHOICES)
+    monto_presupuestado = models.DecimalField(max_digits=12, decimal_places=2)
+    monto_gastado = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ['usuario', 'año', 'mes', 'categoria']
+        ordering = ['-año', '-mes', 'categoria']
+    
+    def __str__(self):
+        return f"{self.usuario.username} - {self.get_categoria_display()} - {self.año}/{self.mes:02d}"
+    
+    @property
+    def porcentaje_usado(self):
+        """Calcula el porcentaje del presupuesto usado"""
+        if self.monto_presupuestado > 0:
+            return (self.monto_gastado / self.monto_presupuestado) * 100
+        return 0
+    
+    @property
+    def monto_restante(self):
+        """Calcula el monto restante del presupuesto"""
+        return self.monto_presupuestado - self.monto_gastado
+    
+    @property
+    def estado(self):
+        """Determina el estado del presupuesto"""
+        if self.porcentaje_usado >= 100:
+            return 'excedido'
+        elif self.porcentaje_usado >= 80:
+            return 'advertencia'
+        else:
+            return 'normal'
+    
+    def actualizar_gastado(self):
+        """Actualiza el monto gastado basado en movimientos reales"""
+        from django.db.models import Sum
+        from django.utils import timezone
+        
+        # Calcular gastos reales del mes para esta categoría
+        gastos_reales = Movimiento.objects.filter(
+            usuario=self.usuario,
+            fecha__year=self.año,
+            fecha__month=self.mes,
+            tipo='gasto',
+            categoria=self.categoria
+        ).aggregate(total=Sum('monto'))['total'] or 0
+        
+        self.monto_gastado = gastos_reales
+        self.save(update_fields=['monto_gastado', 'actualizado_en'])
